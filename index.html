@@ -4,6 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Abel Bou — Gestión</title>
+    <script>
+      (function(){
+        var p = window.location.search.match(/p=\/([^&]*)/);
+        if (p) {
+          window.history.replaceState(null, null,
+            window.location.pathname.split('/').slice(0,2).join('/') + '/' + p[1] +
+            (window.location.search.match(/q=([^&]*)/) ? '?' + window.location.search.match(/q=([^&]*)/)[1].replace(/~and~/g,'&') : '') +
+            window.location.hash
+          );
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
