@@ -1,0 +1,72 @@
+.root {
+  min-height: 100vh; display: flex;
+  align-items: center; justify-content: center;
+  position: relative; background: var(--text);
+}
+.bg {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 70% 60% at 50% 40%, rgba(109,207,148,0.12) 0%, transparent 70%);
+}
+.card {
+  position: relative; z-index: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-xl);
+  padding: 40px; width: 100%; max-width: 380px;
+  animation: fadeUp 0.3s ease;
+}
+.logo { margin-bottom: 32px; }
+.logoText {
+  display: block;
+  font-size: 28px; font-weight: 700; font-style: italic;
+  color: var(--brand); letter-spacing: -0.02em;
+}
+.logoSub {
+  font-size: 12px; color: rgba(255,255,255,0.35);
+  margin-top: 2px;
+}
+.form { display: flex; flex-direction: column; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.06em; }
+.field input {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.12);
+  color: white;
+}
+.field input::placeholder { color: rgba(255,255,255,0.2); }
+.field input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(109,207,148,0.15); }
+
+.error {
+  padding: 10px 14px; border-radius: var(--radius);
+  background: rgba(229,72,77,0.12); color: #ff8085;
+  border: 1px solid rgba(229,72,77,0.25); font-size: 13px;
+}
+.btn {
+  background: var(--brand); color: var(--text);
+  font-family: var(--font); font-size: 15px; font-weight: 700;
+  padding: 13px; border-radius: var(--radius);
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 46px; margin-top: 4px;
+  transition: filter 0.15s;
+}
+.btn:hover:not(:disabled) { filter: brightness(0.92); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid rgba(26,46,34,0.3);
+  border-top-color: var(--text);
+  border-radius: 50%; animation: spin 0.6s linear infinite;
+}
+.hint {
+  margin-top: 20px; padding: 14px;
+  background: rgba(255,255,255,0.04);
+  border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.08);
+  font-size: 12px; color: rgba(255,255,255,0.3); line-height: 1.8;
+}
+.hint code {
+  font-family: var(--font-mono); font-size: 11px;
+  background: rgba(109,207,148,0.1); color: var(--brand);
+  padding: 1px 6px; border-radius: 4px;
+}
+.hint strong { color: rgba(255,255,255,0.5); }

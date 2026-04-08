@@ -1,0 +1,65 @@
+.row {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 16px;
+  transition: border-color 0.15s;
+}
+.row:hover { border-color: var(--border); }
+.done { opacity: 0.55; }
+
+.checkBtn {
+  width: 22px; height: 22px; border-radius: 6px;
+  border: 2px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+.checkBtn:hover { border-color: var(--accent2); }
+.checked { background: var(--accent2); border-color: var(--accent2); color: #0a0a0f; }
+
+.info { flex: 1; min-width: 0; }
+.titleRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.taskTitle { font-weight: 600; font-size: 14px; }
+.invoicedTag {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  background: rgba(124,110,247,0.15); color: var(--accent);
+  padding: 2px 7px; border-radius: 20px;
+}
+.typeTag {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  background: var(--bg3); color: var(--muted);
+  padding: 2px 7px; border-radius: 20px;
+}
+.meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.clientName { font-weight: 600; color: var(--text); }
+
+.timerDisplay {
+  font-family: 'Courier New', monospace; font-size: 16px; font-weight: 700;
+  color: var(--warn); animation: pulse 1s infinite;
+  min-width: 80px; text-align: center;
+}
+
+.actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+
+.timerBtn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 12px; border-radius: var(--radius);
+  font-size: 12px; font-weight: 600;
+  background: rgba(86,224,176,0.12); color: var(--accent2);
+  border: 1px solid rgba(86,224,176,0.2);
+  transition: background 0.15s;
+}
+.timerBtn:hover { background: rgba(86,224,176,0.2); }
+.timerRunning {
+  background: rgba(242,95,92,0.12); color: var(--danger);
+  border-color: rgba(242,95,92,0.2);
+  animation: pulse 2s infinite;
+}
+.timerRunning:hover { background: rgba(242,95,92,0.2); }
+
+.iconBtn {
+  width: 30px; height: 30px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted); transition: background 0.15s, color 0.15s;
+}
+.iconBtn:hover { background: var(--bg3); color: var(--text); }
+.danger:hover  { background: rgba(242,95,92,0.1); color: var(--danger); }

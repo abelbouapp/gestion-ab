@@ -1,0 +1,76 @@
+.page { max-width: 1100px; animation: fadeUp 0.2s ease; }
+
+.greeting { margin-bottom: 28px; }
+.greeting h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+.greeting p  { color: var(--muted); margin-top: 3px; }
+
+/* Fiscal grid */
+.fiscalGrid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  margin-bottom: 24px;
+}
+@media (max-width: 900px) { .fiscalGrid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 600px) { .fiscalGrid { grid-template-columns: repeat(2, 1fr); } }
+
+.fiscalCard {
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  border: 1.5px solid transparent;
+}
+.fcLabel { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.7; margin-bottom: 6px; }
+.fcValue { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.fcSub   { font-size: 11px; opacity: 0.6; margin-top: 4px; }
+
+.fcGreen  { background: var(--brand-light);               color: #1a5c34; border-color: #b8e8cc; }
+.fcBlue   { background: rgba(79,127,255,0.08);            color: #1a3580; border-color: rgba(79,127,255,0.2); }
+.fcOrange { background: rgba(249,115,22,0.08);            color: #7c3010; border-color: rgba(249,115,22,0.2); }
+.fcRed    { background: rgba(229,72,77,0.08);             color: #7c1a1d; border-color: rgba(229,72,77,0.2); }
+.fcPurple { background: rgba(167,139,250,0.1);            color: #4a2c7c; border-color: rgba(167,139,250,0.2); }
+.fcDark   { background: var(--text); color: white; border-color: var(--text); }
+.fcDark .fcLabel, .fcDark .fcSub { opacity: 0.5; }
+.fcDark .fcValue { color: var(--brand); }
+
+/* Cols */
+.cols {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  margin-bottom: 16px;
+}
+@media (max-width: 700px) { .cols { grid-template-columns: 1fr; } }
+
+.seeAll { font-size: 12px; color: var(--brand-dark); font-weight: 600; }
+
+.invRow {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 8px; border-radius: var(--radius);
+  cursor: pointer; transition: background 0.12s;
+}
+.invRow:hover { background: var(--bg3); }
+.invNum    { font-weight: 700; font-size: 13px; font-family: var(--font-mono); }
+.invClient { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.invRight  { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.invAmount { font-weight: 700; font-size: 13px; color: var(--text); }
+
+.projRow {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 8px; border-radius: var(--radius);
+  cursor: pointer; transition: background 0.12s;
+}
+.projRow:hover { background: var(--bg3); }
+.projInfo  { flex: 1; min-width: 0; }
+.projTitle { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.projClient{ font-size: 12px; color: var(--muted); }
+
+.empty { color: var(--muted); font-size: 13px; padding: 16px 8px; }
+
+/* Quick stats */
+.quickStats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.qstat {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px 18px;
+}
+.qstatClick { cursor: pointer; transition: border-color 0.15s; }
+.qstatClick:hover { border-color: var(--brand); }
+.qstatVal { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums; }
+.qstatLbl { font-size: 12px; color: var(--muted); margin-top: 3px; }

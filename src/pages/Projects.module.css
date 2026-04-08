@@ -1,0 +1,103 @@
+.page { max-width:900px; animation:fadeUp 0.2s ease; }
+.header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; }
+.title  { font-size:24px; font-weight:700; letter-spacing:-0.02em; }
+.sub    { color:var(--muted); margin-top:2px; font-size:13px; }
+.clientFilter { width:auto; padding:8px 12px; }
+
+.card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--radius-lg); margin-bottom:8px;
+  overflow:hidden; transition:border-color 0.15s;
+}
+.cardExpanded { border-color:var(--brand); }
+
+.cardHead {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 16px; cursor:pointer; gap:12px;
+}
+.cardLeft  { display:flex; align-items:center; gap:10px; flex:1; min-width:0; }
+.colorBar  { width:4px; height:36px; border-radius:4px; flex-shrink:0; }
+.cardInfo  { flex:1; min-width:0; }
+.cardTitle { font-weight:600; font-size:14px; }
+.cardMeta  { font-size:12px; color:var(--muted); margin-top:2px; }
+.cardRight { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+
+.timerDisplay {
+  font-family:var(--font-mono); font-size:16px; font-weight:700;
+  color:var(--brand-dark); animation:timerTick 1s step-start infinite;
+  min-width:72px; text-align:center;
+}
+.statusSel { width:auto; padding:5px 8px; font-size:12px; }
+.iconBtn {
+  width:28px; height:28px; border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--muted); transition:background 0.12s, color 0.12s;
+}
+.iconBtn:hover { background:var(--bg3); color:var(--text); }
+.danger:hover  { background:rgba(229,72,77,0.1); color:var(--danger); }
+
+/* Panel */
+.panel {
+  border-top:1px solid var(--border);
+  padding:16px 20px; display:flex; flex-direction:column; gap:14px;
+  background:var(--bg);
+}
+
+.progress {}
+.progressTop { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.progressLabel { display:flex; align-items:center; gap:5px; font-size:12px; color:var(--muted); }
+.progressPct   { font-size:12px; font-weight:700; color:var(--text2); }
+.progressBar   { height:6px; background:var(--border); border-radius:99px; overflow:hidden; }
+.progressFill  { height:100%; border-radius:99px; transition:width 0.3s; }
+
+.earnings {
+  display:flex; justify-content:space-between; align-items:center;
+  background:var(--brand-light); border-radius:var(--radius); padding:10px 14px;
+}
+.earningsLabel { font-size:12px; color:#1a5c34; font-weight:500; }
+.earningsVal   { font-size:16px; font-weight:700; color:#1a5c34; }
+
+/* Timer */
+.timerSection { display:flex; flex-direction:column; gap:10px; }
+.timerControls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.runningDisplay {
+  display:flex; align-items:center; gap:8px;
+  background:rgba(109,207,148,0.12); border:1px solid rgba(109,207,148,0.3);
+  border-radius:var(--radius); padding:8px 14px;
+}
+.runningDot {
+  width:8px; height:8px; border-radius:50%; background:var(--brand);
+  animation:pulse 1s infinite;
+}
+.runningTime  { font-family:var(--font-mono); font-size:18px; font-weight:700; color:var(--brand-dark); }
+.runningLabel { font-size:12px; color:var(--muted); }
+
+/* Sessions table */
+.sessionsTable {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--radius); overflow:hidden;
+}
+.sessHead {
+  display:grid; grid-template-columns:1fr 1fr 1fr 1fr;
+  padding:8px 14px;
+  background:var(--bg3); font-size:11px; font-weight:600;
+  color:var(--muted); text-transform:uppercase; letter-spacing:0.05em;
+}
+.sessRow {
+  display:grid; grid-template-columns:1fr 1fr 1fr 1fr;
+  padding:10px 14px; font-size:13px;
+  border-top:1px solid var(--border);
+}
+.sessRow:nth-child(odd) { background:var(--bg); }
+.sessDur { font-weight:700; color:var(--brand-dark); }
+.sessTotal {
+  display:grid; grid-template-columns:1fr 1fr 1fr 1fr;
+  padding:10px 14px; font-size:13px; font-weight:700;
+  border-top:2px solid var(--border); background:var(--brand-light);
+  color:#1a5c34;
+}
+
+.desc {
+  font-size:13px; color:var(--text2); line-height:1.7;
+  white-space:pre-wrap;
+}

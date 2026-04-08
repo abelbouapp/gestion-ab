@@ -1,0 +1,47 @@
+.page { max-width:860px; animation:fadeUp 0.2s ease; }
+.back { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:13px; margin-bottom:20px; transition:color 0.15s; }
+.back:hover { color:var(--text); }
+.header { display:flex; align-items:flex-start; gap:16px; margin-bottom:20px; }
+.hInfo  { flex:1; }
+.name   { font-size:22px; font-weight:700; letter-spacing:-0.02em; margin-bottom:5px; }
+.meta   { display:flex; gap:12px; flex-wrap:wrap; font-size:12.5px; color:var(--muted); margin-top:3px; }
+.hActions { display:flex; gap:8px; flex-shrink:0; }
+
+.statsRow { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:24px; }
+.stat { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 16px; }
+.statVal { font-size:20px; font-weight:700; letter-spacing:-0.02em; color:var(--brand-dark); }
+.statLbl { font-size:11px; color:var(--muted); margin-top:2px; }
+
+.tabs { display:flex; gap:2px; border-bottom:1px solid var(--border); margin-bottom:16px; }
+.tab {
+  padding:9px 16px; font-size:13.5px; font-weight:500; color:var(--muted);
+  border-bottom:2px solid transparent; margin-bottom:-1px; transition:color 0.15s, border-color 0.15s;
+}
+.tab:hover { color:var(--text); }
+.tabActive  { color:var(--brand-dark); border-bottom-color:var(--brand); }
+.tabAction  { display:flex; justify-content:flex-end; margin-bottom:10px; }
+
+.projRow {
+  display:flex; align-items:center; gap:14px;
+  background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius);
+  padding:13px 16px; margin-bottom:6px; cursor:pointer; transition:border-color 0.15s;
+}
+.projRow:hover { border-color:var(--brand); }
+.projTitle { font-weight:600; font-size:14px; flex:1; }
+.projMeta  { font-size:12px; color:var(--muted); }
+
+.invRow {
+  display:flex; align-items:center; gap:14px;
+  background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius);
+  padding:13px 16px; margin-bottom:6px; cursor:pointer; transition:border-color 0.15s;
+}
+.invRow:hover { border-color:var(--brand); }
+.invNum   { font-family:var(--font-mono); font-weight:700; font-size:13px; margin-right:8px; }
+.invMeta  { color:var(--muted); font-size:12px; flex:1; }
+.invTotal { font-weight:700; color:var(--text); }
+
+.notes {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--radius-lg); padding:20px;
+  white-space:pre-wrap; line-height:1.8; color:var(--text2);
+}
