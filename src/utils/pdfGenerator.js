@@ -17,7 +17,7 @@ export function getRealNotes(notes) {
 
 async function loadLogoBase64() {
   try {
-    const res = await fetch('/logo.png')
+    const res = await fetch(import.meta.env.BASE_URL + 'logo.png')
     if (!res.ok) return null
     const blob = await res.blob()
     return new Promise(resolve => {
