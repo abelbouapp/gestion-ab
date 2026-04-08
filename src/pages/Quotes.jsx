@@ -32,16 +32,18 @@ export default function Quotes() {
 
   async function handleSave(data) {
     if (modal?.id) {
-      await updateQuote(modal.id, data)
+      const { error } = await updateQuote(modal.id, data)
+      if (error) { alert('Error al guardar presupuesto: ' + error.message); return }
     } else {
-      await addQuote(data)
+      const { error } = await addQuote(data)
+      if (error) { alert('Error al crear presupuesto: ' + error.message); return }
     }
     setModal(null)
   }
 
   async function handleConvert(invoiceData) {
-    await addInvoice(invoiceData)
-    // Mark quote as converted
+    const { error } = await addInvoice(invoiceData)
+    if (error) { alert('Error al crear factura: ' + error.message); return }
     await updateQuote(converting.id, { status: 'accepted', converted_to_invoice: true })
     setConverting(null)
     alert('✅ Factura creada. Puedes verla en la sección Facturas.')

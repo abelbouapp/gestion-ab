@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Upload, Trash2, ExternalLink, Receipt, FileImage, FilePdf } from 'lucide-react'
+import { Upload, Trash2, ExternalLink, Receipt, FileImage } from 'lucide-react'
 import { useTickets } from '../hooks/useTickets'
 import { Btn, Empty, Spinner, SectionCard } from '../components/UI'
 import { formatCurrency, formatDate } from '../utils/helpers'
@@ -12,6 +12,7 @@ export default function Tickets() {
   const [form, setForm] = useState({ description:'', amount:'', iva_rate:21, iva_amount:'', date: new Date().toISOString().split('T')[0], category:'Otros' })
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null)
+  const [saved, setSaved] = useState(false)
   const fileRef = useRef()
   const set = (k,v) => setForm(p => ({...p,[k]:v}))
 
@@ -42,15 +43,26 @@ export default function Tickets() {
       amount:      parseFloat(form.amount) || 0,
       iva_amount:  parseFloat(form.iva_amount) || 0,
       iva_rate:    parseFloat(form.iva_rate) || 21,
-      date:        form.date,
+      date:        form.date || null,
       category:    form.category,
     }
-    if (file) await uploadTicket(file, fields)
-    else      await addTicketNoFile(fields)
-    setForm({ description:'', amount:'', iva_rate:21, iva_amount:'', date: new Date().toISOString().split('T')[0], category:'Otros' })
-    setFile(null)
-    setPreview(null)
-    if (fileRef.current) fileRef.current.value = ''
+    try {
+      let result
+      if (file) result = await uploadTicket(file, fields)
+      else      result = await addTicketNoFile(fields)
+      if (result?.error) {
+        alert('Error al guardar ticket:\n' + (result.error.message || JSON.stringify(result.error)))
+        return
+      }
+      setForm({ description:'', amount:'', iva_rate:21, iva_amount:'', date: new Date().toISOString().split('T')[0], category:'Otros' })
+      setFile(null)
+      setPreview(null)
+      if (fileRef.current) fileRef.current.value = ''
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err) {
+      alert('Error inesperado: ' + err.message)
+    }
   }
 
   if (loading) return <div className={s.page}><Spinner /></div>
@@ -147,8 +159,13 @@ export default function Tickets() {
             </div>
 
             <Btn type="submit" disabled={uploading} full icon={<Upload size={14}/>}>
-              {uploading ? 'Subiendo…' : 'Guardar ticket'}
+              {uploading ? 'Subiendo…' : saved ? '✓ Ticket guardado' : 'Guardar ticket'}
             </Btn>
+            {saved && (
+              <div style={{ textAlign:'center', color:'var(--brand)', fontSize:13, fontWeight:600 }}>
+                ✓ Ticket añadido correctamente
+              </div>
+            )}
           </form>
         </SectionCard>
 

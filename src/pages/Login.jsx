@@ -46,11 +46,6 @@ export default function Login() {
           </button>
         </form>
 
-        <div className={s.hint}>
-          <strong>Acceso por defecto:</strong><br />
-          <code>abel@abelbou.com</code> / <code>abelbou2024</code><br />
-          Cámbialo en <strong>Ajustes</strong> al entrar.
-        </div>
       </div>
     </div>
   )

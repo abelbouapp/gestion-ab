@@ -1,11 +1,14 @@
 import { Modal, Btn, StatusBadge, SeriesBadge } from './UI'
 import { formatCurrency, formatDate } from '../utils/helpers'
-import { generateInvoicePDF } from '../utils/pdfGenerator'
+import { generateInvoicePDF, parseOcClient, getRealNotes } from '../utils/pdfGenerator'
 import { Download, Trash2 } from 'lucide-react'
 import s from './InvoiceViewModal.module.css'
 
 export default function InvoiceViewModal({ invoice: inv, clients, myInfo = {}, onClose, onStatusChange, onDelete }) {
-  const client = clients.find(c => c.id === inv.client_id)
+  const client   = clients.find(c => c.id === inv.client_id)
+  const ocClient = !client ? parseOcClient(inv.notes) : null
+  const realNotes = getRealNotes(inv.notes)
+  const clientObj = client || ocClient || {}
   const isD    = inv.series === 'D'
 
   return (
@@ -27,10 +30,11 @@ export default function InvoiceViewModal({ invoice: inv, clients, myInfo = {}, o
               <option value="sent">Enviada</option>
               <option value="paid">Pagada</option>
             </select>
-            <Btn small onClick={() => generateInvoicePDF(inv, client, myInfo)} icon={<Download size={13}/>}>
+            <Btn small onClick={() => generateInvoicePDF(inv, client, myInfo).catch(console.error)} icon={<Download size={13}/>}>
               PDF
             </Btn>
-            <Btn small variant="danger" icon={<Trash2 size={13}/>} onClick={onDelete}>
+            <Btn small variant="danger" icon={<Trash2 size={13}/>}
+              onClick={() => { if (window.confirm(`¿Eliminar la factura ${inv.number}? Esta acción no se puede deshacer.`)) onDelete() }}>
               Eliminar
             </Btn>
           </div>
@@ -38,15 +42,20 @@ export default function InvoiceViewModal({ invoice: inv, clients, myInfo = {}, o
 
         <div className={s.parties}>
           {[
-            { label:'Emisor', name: myInfo.company||myInfo.name||'—', nif: myInfo.nif, addr: myInfo.address, email: myInfo.email },
-            { label:'Cliente', name: client?.name||'—', nif: client?.nif, addr: client?.address, email: client?.email },
+            { label:'Emisor',  name: myInfo.company||myInfo.name||'—', nif: myInfo.nif,      addr: myInfo.address,      email: myInfo.email,      phone: myInfo.phone },
+            { label:'Cliente', name: clientObj.name||'—',              nif: clientObj.nif,   addr: clientObj.address,   email: clientObj.email,   phone: clientObj.phone,
+              occasional: !!ocClient },
           ].map(p => (
             <div key={p.label} className={s.party}>
-              <div className={s.partyLabel}>{p.label}</div>
+              <div className={s.partyLabel}>
+                {p.label}
+                {p.occasional && <span style={{ marginLeft:6, fontSize:10, color:'var(--muted)', fontWeight:400 }}>ocasional</span>}
+              </div>
               <div className={s.partyName}>{p.name}</div>
-              {p.nif  && <div className={s.partyInfo}>NIF: {p.nif}</div>}
-              {p.addr && <div className={s.partyInfo}>{p.addr}</div>}
-              {p.email&& <div className={s.partyInfo}>{p.email}</div>}
+              {p.nif   && <div className={s.partyInfo}>NIF: {p.nif}</div>}
+              {p.addr  && <div className={s.partyInfo}>{p.addr}</div>}
+              {p.email && <div className={s.partyInfo}>{p.email}</div>}
+              {p.phone && <div className={s.partyInfo}>{p.phone}</div>}
             </div>
           ))}
         </div>
@@ -82,7 +91,7 @@ export default function InvoiceViewModal({ invoice: inv, clients, myInfo = {}, o
           </div>
         </div>
 
-        {inv.notes && <div className={s.notes}><strong>Notas:</strong> {inv.notes}</div>}
+        {realNotes && <div className={s.notes}><strong>Notas:</strong> {realNotes}</div>}
       </div>
     </Modal>
   )

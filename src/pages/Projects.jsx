@@ -4,6 +4,18 @@ import { Plus, Play, Square, ChevronDown, ChevronUp, Pencil, Trash2, Clock } fro
 import { useClients, useProjects, useTimerSessions } from '../hooks/useData'
 import { Btn, Empty, Spinner, StatusBadge, Avatar, SectionCard } from '../components/UI'
 import { formatCurrency, formatDate, formatMinutes, formatTime, getColor } from '../utils/helpers'
+
+function parseOcProject(description) {
+  if (!description?.startsWith('_oc_client_:')) return null
+  try {
+    const firstLine = description.split('\n')[0].replace('_oc_client_:', '')
+    return JSON.parse(firstLine)
+  } catch { return null }
+}
+function getRealDescription(description) {
+  if (!description?.startsWith('_oc_client_:')) return description || ''
+  return description.split('\n').slice(1).join('\n').trim()
+}
 import ProjectModal from '../components/ProjectModal'
 import s from './Projects.module.css'
 
@@ -21,8 +33,15 @@ export default function Projects() {
   )
 
   async function handleSave(data) {
-    if (editProj) { await updateProject(editProj.id, data); setEditProj(null) }
-    else          { await addProject(data); setModal(false) }
+    if (editProj) {
+      const { error } = await updateProject(editProj.id, data)
+      if (error) { alert('Error al guardar: ' + error.message); return }
+      setEditProj(null)
+    } else {
+      const { error } = await addProject(data)
+      if (error) { alert('Error al crear proyecto: ' + error.message); return }
+      setModal(false)
+    }
   }
 
   if (loading) return <div className={s.page}><Spinner /></div>
@@ -49,10 +68,11 @@ export default function Projects() {
       {filtered.length === 0
         ? <Empty message={projects.length===0 ? 'Sin proyectos. ¡Crea el primero!' : 'Sin resultados'} />
         : filtered.map(p => {
-          const client = clients.find(c => c.id === p.client_id)
+          const client   = clients.find(c => c.id === p.client_id)
+          const ocClient = !client ? parseOcProject(p.description) : null
           return (
             <ProjectCard
-              key={p.id} project={p} client={client}
+              key={p.id} project={p} client={client} ocClient={ocClient}
               expanded={expanded === p.id}
               onToggle={() => setExpanded(expanded === p.id ? null : p.id)}
               onEdit={() => { setEditProj(p); }}
@@ -76,14 +96,16 @@ export default function Projects() {
 }
 
 // ── Project card with embedded timer ──────────────────────
-function ProjectCard({ project: p, client, expanded, onToggle, onEdit, onDelete, onStatusChange }) {
+function ProjectCard({ project: p, client, ocClient, expanded, onToggle, onEdit, onDelete, onStatusChange }) {
   const { sessions, totalMinutes, startSession, stopSession } = useTimerSessions(expanded ? p.id : null)
   const [running,    setRunning]   = useState(false)
   const [sessionId,  setSessionId] = useState(null)
   const [elapsed,    setElapsed]   = useState(0)
   const [sessionNote, setSNote]    = useState('')
   const intervalRef = useRef(null)
-  const color = client?.color || getColor(0)
+  const color       = client?.color || getColor(0)
+  const clientName  = client?.name || ocClient?.name || '—'
+  const cleanDesc   = getRealDescription(p.description)
 
   useEffect(() => {
     return () => clearInterval(intervalRef.current)
@@ -119,11 +141,11 @@ function ProjectCard({ project: p, client, expanded, onToggle, onEdit, onDelete,
       <div className={s.cardHead} onClick={onToggle}>
         <div className={s.cardLeft}>
           <div className={s.colorBar} style={{ background: color }} />
-          <Avatar name={client?.name} color={color} size={34} />
+          <Avatar name={clientName} color={color} size={34} />
           <div className={s.cardInfo}>
             <div className={s.cardTitle}>{p.title}</div>
             <div className={s.cardMeta}>
-              {client?.name} ·{' '}
+              {clientName} ·{' '}
               {p.type === 'hourly'
                 ? `${p.hourly_rate || 0}€/h · ${formatMinutes(totalMinutes)} registradas`
                 : `Precio fijo: ${formatCurrency(p.fixed_price)}`
@@ -229,8 +251,8 @@ function ProjectCard({ project: p, client, expanded, onToggle, onEdit, onDelete,
             </div>
           )}
 
-          {p.description && (
-            <div className={s.desc}>{p.description}</div>
+          {cleanDesc && (
+            <div className={s.desc}>{cleanDesc}</div>
           )}
         </div>
       )}

@@ -6,7 +6,7 @@ const USERS_KEY = 'ab_users'
 const SESSION_KEY = 'ab_session'
 
 const DEFAULT_USERS = [
-  { email: 'abel@abelbou.com', password: 'abelbou2024', name: 'Abel Bou' }
+  { email: 'abelboudiseno@gmail.com', password: 'abelbou2024', name: 'Abel Bou' }
 ]
 
 export function AuthProvider({ children }) {

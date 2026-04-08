@@ -25,28 +25,35 @@ export function useTickets() {
   async function uploadTicket(file, fields) {
     setUploading(true)
     try {
-      // Upload file to storage
       const ext      = file.name.split('.').pop()
       const fileName = `${uid}/${Date.now()}.${ext}`
+
       const { error: uploadError } = await supabase.storage
         .from('tickets')
         .upload(fileName, file)
 
-      if (uploadError) throw uploadError
+      let fileUrl  = ''
+      let filePath = ''
 
-      // Get public URL (signed)
-      const { data: urlData } = await supabase.storage
-        .from('tickets')
-        .createSignedUrl(fileName, 60 * 60 * 24 * 365) // 1 year
+      if (uploadError) {
+        // El bucket de Storage no está configurado — guardamos el ticket sin archivo
+        console.warn('Storage no disponible, guardando ticket sin archivo:', uploadError.message)
+      } else {
+        const { data: urlData } = await supabase.storage
+          .from('tickets')
+          .createSignedUrl(fileName, 60 * 60 * 24 * 365)
+        fileUrl  = urlData?.signedUrl || ''
+        filePath = fileName
+      }
 
       const { data, error } = await supabase
         .from('tickets')
         .insert({
           ...fields,
           user_id:   uid,
-          file_url:  urlData?.signedUrl || '',
-          file_name: file.name,
-          file_path: fileName,
+          file_url:  fileUrl,
+          file_name: fileUrl ? file.name : '',
+          file_path: filePath,
         })
         .select().single()
 

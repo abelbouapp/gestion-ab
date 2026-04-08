@@ -5,7 +5,7 @@ import { useClients } from '../hooks/useData'
 import { useInvoices } from '../hooks/useInvoices'
 import { Btn, Empty, Spinner, StatusBadge, SeriesBadge } from '../components/UI'
 import { formatCurrency, formatDate } from '../utils/helpers'
-import { generateInvoicePDF } from '../utils/pdfGenerator'
+import { generateInvoicePDF, parseOcClient } from '../utils/pdfGenerator'
 import InvoiceModal from '../components/InvoiceModal'
 import InvoiceViewModal from '../components/InvoiceViewModal'
 import s from './Invoices.module.css'
@@ -13,7 +13,15 @@ import s from './Invoices.module.css'
 export default function Invoices() {
   const [params] = useSearchParams()
   const { clients } = useClients()
-  const { invoices, loading, addInvoice, updateInvoice, deleteInvoice } = useInvoices()
+  const { invoices, loading, addInvoice, updateInvoice, deleteInvoice, finalizeInvoice } = useInvoices()
+
+  async function handleStatusChange(inv, newStatus) {
+    // Si pasa de borrador a enviada/pagada → asignar número fiscal
+    if (inv.number === 'BORRADOR' && newStatus !== 'draft') {
+      await finalizeInvoice(inv.id, inv.series)
+    }
+    updateInvoice(inv.id, { status: newStatus })
+  }
   const [modal,    setModal]   = useState(params.get('client') ? { clientId: params.get('client') } : null)
   const [viewing,  setViewing] = useState(null)
   const [series,   setSeries]  = useState('all') // all | D | P
@@ -89,6 +97,8 @@ export default function Invoices() {
           <div className={s.list}>
             {filtered.map(inv => {
               const client = clients.find(c => c.id === inv.client_id)
+              const ocClient = !client ? parseOcClient(inv.notes) : null
+              const clientName = client?.name || ocClient?.name || '—'
               const isD    = inv.series === 'D'
               return (
                 <div key={inv.id}
@@ -98,7 +108,7 @@ export default function Invoices() {
                   <div className={s.seriesStripe} style={{ background: isD?'var(--series-d)':'var(--series-p)' }}/>
                   <div className={s.invNum}>{inv.number}</div>
                   <div className={s.invClient}>
-                    <div>{client?.name || '—'}</div>
+                    <div>{clientName}{ocClient && <span style={{ fontSize: 10, color: 'var(--muted)', marginLeft: 5 }}>ocasional</span>}</div>
                     <SeriesBadge series={inv.series} />
                   </div>
                   <div className={s.invDate}>{formatDate(inv.date)}</div>
@@ -111,13 +121,13 @@ export default function Invoices() {
                   <StatusBadge status={inv.status} />
                   <select className={s.statusSel} value={inv.status}
                     onClick={e => e.stopPropagation()}
-                    onChange={e => updateInvoice(inv.id, { status: e.target.value })}>
+                    onChange={e => { e.stopPropagation(); handleStatusChange(inv, e.target.value) }}>
                     <option value="draft">Borrador</option>
                     <option value="sent">Enviada</option>
                     <option value="paid">Pagada</option>
                   </select>
                   <button className={s.dlBtn}
-                    onClick={e => { e.stopPropagation(); generateInvoicePDF(inv, client, myInfo) }}>
+                    onClick={e => { e.stopPropagation(); generateInvoicePDF(inv, client || null, myInfo).catch(console.error) }}>
                     <Download size={14}/>
                   </button>
                 </div>
@@ -130,7 +140,11 @@ export default function Invoices() {
       {modal !== null && (
         <InvoiceModal
           initial={modal} clients={clients}
-          onSave={async data => { await addInvoice(data); setModal(null) }}
+          onSave={async data => {
+            const { error } = await addInvoice(data)
+            if (error) { alert('Error al crear factura: ' + error.message); return }
+            setModal(null)
+          }}
           onClose={() => setModal(null)}
         />
       )}
@@ -138,7 +152,10 @@ export default function Invoices() {
         <InvoiceViewModal
           invoice={viewing} clients={clients} myInfo={myInfo}
           onClose={() => setViewing(null)}
-          onStatusChange={st => { updateInvoice(viewing.id,{status:st}); setViewing(p=>({...p,status:st})) }}
+          onStatusChange={async st => {
+            await handleStatusChange(viewing, st)
+            setViewing(p => ({ ...p, status: st, number: p.number === 'BORRADOR' && st !== 'draft' ? '...' : p.number }))
+          }}
           onDelete={async () => { await deleteInvoice(viewing.id); setViewing(null) }}
         />
       )}

@@ -34,13 +34,30 @@ export function useInvoices(clientId = null) {
   }
 
   async function addInvoice(fields) {
-    const seq    = await getNextSeq(fields.series)
-    const number = buildInvoiceNumber(fields.series, seq)
+    let seq, number
+    if (fields.status === 'draft') {
+      // Borrador: sin número fiscal
+      seq    = 0
+      number = 'BORRADOR'
+    } else {
+      seq    = await getNextSeq(fields.series)
+      number = buildInvoiceNumber(fields.series, seq)
+    }
     const { data, error } = await supabase
       .from('invoices')
       .insert({ ...fields, user_id: uid, number_seq: seq, number })
       .select().single()
     if (!error) setInvoices(p => [data, ...p])
+    return { data, error }
+  }
+
+  async function finalizeInvoice(id, series) {
+    // Asigna número fiscal cuando se pasa de borrador a enviada/pagada
+    const seq    = await getNextSeq(series)
+    const number = buildInvoiceNumber(series, seq)
+    const { data, error } = await supabase
+      .from('invoices').update({ number_seq: seq, number }).eq('id', id).select().single()
+    if (!error) setInvoices(p => p.map(i => i.id === id ? data : i))
     return { data, error }
   }
 
@@ -64,7 +81,7 @@ export function useInvoices(clientId = null) {
 
   return {
     invoices, loading, reload: load,
-    addInvoice, updateInvoice, deleteInvoice,
+    addInvoice, updateInvoice, deleteInvoice, finalizeInvoice,
     ivaCollected, irpfRetained, totalBilled
   }
 }
