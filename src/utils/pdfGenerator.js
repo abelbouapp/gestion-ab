@@ -138,27 +138,46 @@ export async function generateInvoicePDF(invoice, client, myInfo = {}) {
   const tableY = Math.max(iy, cy) + 8
   const lines  = invoice.lines || []
 
-  autoTable(doc, {
-    startY: tableY,
-    head: [['Descripción', 'Cant.', 'Ud.', 'Precio unit.', 'Total']],
-    body: lines.map(l => [
-      l.desc,
-      Number(l.qty).toFixed(2),
-      l.unit || 'ud',
-      formatCurrency(l.price),
-      formatCurrency(Number(l.qty) * Number(l.price)),
-    ]),
-    styles: { font: 'helvetica', fontSize: 9, cellPadding: 5, textColor: [26, 46, 34] },
-    headStyles: { fillColor: [26, 46, 34], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
-    alternateRowStyles: { fillColor: [247, 249, 247] },
-    columnStyles: {
-      0: { cellWidth: 80 },
-      1: { halign: 'right' },
-      2: { halign: 'center' },
-      3: { halign: 'right' },
-      4: { halign: 'right', fontStyle: 'bold' },
-    },
-  })
+  // Detectar modo paquete: primera línea tiene precio, el resto tienen precio=0
+  const isPackage = lines.length > 1 && Number(lines[0].price) > 0 && lines.slice(1).every(l => Number(l.price) === 0)
+
+  if (isPackage) {
+    const pkgTotal = Number(lines[0].qty) * Number(lines[0].price)
+    autoTable(doc, {
+      startY: tableY,
+      head: [['Conceptos incluidos']],
+      body: [
+        ...lines.map(l => [l.desc]),
+        [{ content: `Precio del paquete: ${formatCurrency(pkgTotal)}`, styles: { halign: 'right', fontStyle: 'bold', textColor: [accentR, accentG, accentB] } }],
+      ],
+      styles: { font: 'helvetica', fontSize: 9, cellPadding: 5, textColor: [26, 46, 34] },
+      headStyles: { fillColor: [26, 46, 34], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+      alternateRowStyles: { fillColor: [247, 249, 247] },
+      columnStyles: { 0: { cellWidth: 'auto' } },
+    })
+  } else {
+    autoTable(doc, {
+      startY: tableY,
+      head: [['Descripción', 'Cant.', 'Ud.', 'Precio unit.', 'Total']],
+      body: lines.map(l => [
+        l.desc,
+        Number(l.qty).toFixed(2),
+        l.unit || 'ud',
+        formatCurrency(l.price),
+        formatCurrency(Number(l.qty) * Number(l.price)),
+      ]),
+      styles: { font: 'helvetica', fontSize: 9, cellPadding: 5, textColor: [26, 46, 34] },
+      headStyles: { fillColor: [26, 46, 34], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+      alternateRowStyles: { fillColor: [247, 249, 247] },
+      columnStyles: {
+        0: { cellWidth: 80 },
+        1: { halign: 'right' },
+        2: { halign: 'center' },
+        3: { halign: 'right' },
+        4: { halign: 'right', fontStyle: 'bold' },
+      },
+    })
+  }
 
   // ── Totales
   const fy = doc.lastAutoTable.finalY + 6
