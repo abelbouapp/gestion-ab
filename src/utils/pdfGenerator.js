@@ -117,13 +117,14 @@ export async function generateInvoicePDF(invoice, client, myInfo = {}) {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
   doc.setTextColor(26, 46, 34)
-  doc.text(myInfo.company || myInfo.name || 'Abel Bou', 14, y)
+  doc.text(myInfo.company || 'Abel Bou', 14, y)
   doc.text(clientObj.name || '—', 110, y)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
   doc.setTextColor(100, 120, 110)
   let iy = y + 6, cy = y + 6
+  if (myInfo.name)    { doc.text(myInfo.name, 14, iy); iy += 5 }
   if (myInfo.nif)     { doc.text(`NIF: ${myInfo.nif}`, 14, iy); iy += 5 }
   if (myInfo.address) { doc.text(myInfo.address, 14, iy); iy += 5 }
   if (myInfo.email)   { doc.text(myInfo.email, 14, iy); iy += 5 }
@@ -131,6 +132,7 @@ export async function generateInvoicePDF(invoice, client, myInfo = {}) {
   if (clientObj.nif)     { doc.text(`NIF: ${clientObj.nif}`, 110, cy); cy += 5 }
   if (clientObj.address) { doc.text(clientObj.address, 110, cy); cy += 5 }
   if (clientObj.email)   { doc.text(clientObj.email, 110, cy); cy += 5 }
+  if (clientObj.phone)   { doc.text(clientObj.phone, 110, cy); cy += 5 }
 
   // ── Tabla de líneas
   const tableY = Math.max(iy, cy) + 8
