@@ -94,35 +94,50 @@ export function useProjects(clientId = null) {
 export function useTimerSessions(projectId) {
   const [sessions, setSessions] = useState([])
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!projectId) return
-    supabase
+    const { data } = await supabase
       .from('timer_sessions')
       .select('*')
       .eq('project_id', projectId)
       .order('started_at', { ascending: false })
-      .then(({ data }) => setSessions(data || []))
+    setSessions(data || [])
   }, [projectId])
 
+  useEffect(() => { load() }, [load])
+
+  // Start a new open session — returns the created row
   async function startSession(projId) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('timer_sessions')
       .insert({ project_id: projId, started_at: new Date().toISOString() })
       .select().single()
+    if (error) { console.error('startSession error', error); return null }
     return data
   }
 
-  async function stopSession(sessionId, minutes) {
-    const { data } = await supabase
+  // Close the session, save minutes + optional note
+  async function stopSession(sessionId, minutes, notes = '') {
+    const { data, error } = await supabase
       .from('timer_sessions')
-      .update({ ended_at: new Date().toISOString(), minutes })
+      .update({ ended_at: new Date().toISOString(), minutes, notes })
       .eq('id', sessionId)
       .select().single()
-    setSessions(p => [data, ...p.filter(s => s.id !== sessionId)])
+    if (!error) setSessions(p => [data, ...p.filter(s => s.id !== sessionId)])
     return data
+  }
+
+  // ✅ Add a fully manual session (no timer needed)
+  async function addManualSession(projId, { started_at, ended_at, minutes, notes }) {
+    const { data, error } = await supabase
+      .from('timer_sessions')
+      .insert({ project_id: projId, started_at, ended_at, minutes, notes })
+      .select().single()
+    if (!error) setSessions(p => [data, ...p])
+    return { data, error }
   }
 
   const totalMinutes = sessions.reduce((s, x) => s + (x.minutes || 0), 0)
 
-  return { sessions, totalMinutes, startSession, stopSession, reload: () => {} }
+  return { sessions, totalMinutes, startSession, stopSession, addManualSession, reload: load }
 }
