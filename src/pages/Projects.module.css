@@ -20,12 +20,11 @@
 .cardInfo  { flex:1; min-width:0; }
 .cardTitle { font-weight:600; font-size:14px; }
 .cardMeta  { font-size:12px; color:var(--muted); margin-top:2px; }
-.cardRight { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.cardRight { display:flex; align-items:center; gap:8px; flex-shrink:0; flex-wrap:wrap; }
 
 .timerDisplay {
   font-family:var(--font-mono); font-size:16px; font-weight:700;
-  color:var(--brand-dark); animation:timerTick 1s step-start infinite;
-  min-width:72px; text-align:center;
+  color:var(--brand-dark); min-width:72px; text-align:center;
 }
 .statusSel { width:auto; padding:5px 8px; font-size:12px; }
 .iconBtn {
@@ -72,26 +71,27 @@
 .runningTime  { font-family:var(--font-mono); font-size:18px; font-weight:700; color:var(--brand-dark); }
 .runningLabel { font-size:12px; color:var(--muted); }
 
-/* Sessions table */
+/* Sessions table — now with 5 cols */
 .sessionsTable {
   background:var(--bg2); border:1px solid var(--border);
   border-radius:var(--radius); overflow:hidden;
 }
 .sessHead {
-  display:grid; grid-template-columns:1fr 1fr 1fr 1fr;
+  display:grid; grid-template-columns:100px 80px 80px 90px 1fr;
   padding:8px 14px;
   background:var(--bg3); font-size:11px; font-weight:600;
   color:var(--muted); text-transform:uppercase; letter-spacing:0.05em;
 }
 .sessRow {
-  display:grid; grid-template-columns:1fr 1fr 1fr 1fr;
+  display:grid; grid-template-columns:100px 80px 80px 90px 1fr;
   padding:10px 14px; font-size:13px;
   border-top:1px solid var(--border);
 }
 .sessRow:nth-child(odd) { background:var(--bg); }
-.sessDur { font-weight:700; color:var(--brand-dark); }
+.sessDur  { font-weight:700; color:var(--brand-dark); }
+.sessNote { color:var(--muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sessTotal {
-  display:grid; grid-template-columns:1fr 1fr 1fr 1fr;
+  display:grid; grid-template-columns:100px 80px 80px 90px 1fr;
   padding:10px 14px; font-size:13px; font-weight:700;
   border-top:2px solid var(--border); background:var(--brand-light);
   color:#1a5c34;
