@@ -3,3 +3,7 @@ dist/
 .DS_Store
 *.local
 .env
+
+# Config de Hostinger — NUNCA subir a Git
+../hostinger/config.php
+hostinger/config.php

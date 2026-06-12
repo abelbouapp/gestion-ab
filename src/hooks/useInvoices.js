@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../utils/supabase'
+import { invoicesApi } from '../utils/api'
 import { useAuth } from '../context/AuthContext'
 import { buildInvoiceNumber } from '../utils/helpers'
 
@@ -11,73 +11,58 @@ export function useInvoices(clientId = null) {
 
   const load = useCallback(async () => {
     setLoading(true)
-    let q = supabase.from('invoices').select('*').eq('user_id', uid)
-    if (clientId) q = q.eq('client_id', clientId)
-    const { data } = await q.order('created_at', { ascending: false })
-    setInvoices(data || [])
+    try {
+      const data = await invoicesApi.list(uid, clientId)
+      setInvoices(data)
+    } catch (e) { console.error(e) }
     setLoading(false)
   }, [uid, clientId])
 
   useEffect(() => { load() }, [load])
 
-  async function getNextSeq(series) {
-    // Get highest seq for this series globally
-    const { data } = await supabase
-      .from('invoices')
-      .select('number_seq')
-      .eq('user_id', uid)
-      .eq('series', series)
-      .order('number_seq', { ascending: false })
-      .limit(1)
-    const last = data?.[0]?.number_seq || 0
+  function getNextSeq(series) {
+    const last = invoices
+      .filter(i => i.series === series)
+      .reduce((m, i) => Math.max(m, Number(i.number_seq) || 0), 0)
     return last + 1
   }
 
   async function addInvoice(fields) {
     let seq, number
     if (fields.status === 'draft') {
-      // Borrador: sin número fiscal
-      seq    = 0
+      seq = 0
       number = 'BORRADOR'
     } else {
-      seq    = await getNextSeq(fields.series)
+      seq = getNextSeq(fields.series)
       number = buildInvoiceNumber(fields.series, seq)
     }
-    const { data, error } = await supabase
-      .from('invoices')
-      .insert({ ...fields, user_id: uid, number_seq: seq, number })
-      .select().single()
-    if (!error) setInvoices(p => [data, ...p])
-    return { data, error }
+    const data = await invoicesApi.create(uid, { ...fields, number_seq: seq, number })
+    setInvoices(p => [data, ...p])
+    return { data }
   }
 
   async function finalizeInvoice(id, series) {
-    // Asigna número fiscal cuando se pasa de borrador a enviada/pagada
-    const seq    = await getNextSeq(series)
+    const seq = getNextSeq(series)
     const number = buildInvoiceNumber(series, seq)
-    const { data, error } = await supabase
-      .from('invoices').update({ number_seq: seq, number }).eq('id', id).select().single()
-    if (!error) setInvoices(p => p.map(i => i.id === id ? data : i))
-    return { data, error }
+    const data = await invoicesApi.update(id, { number_seq: seq, number })
+    setInvoices(p => p.map(i => i.id === id ? data : i))
+    return { data }
   }
 
   async function updateInvoice(id, fields) {
-    const { data, error } = await supabase
-      .from('invoices').update(fields).eq('id', id).select().single()
-    if (!error) setInvoices(p => p.map(i => i.id === id ? data : i))
-    return { data, error }
+    const data = await invoicesApi.update(id, fields)
+    setInvoices(p => p.map(i => i.id === id ? data : i))
+    return { data }
   }
 
   async function deleteInvoice(id) {
-    const { error } = await supabase.from('invoices').delete().eq('id', id)
-    if (!error) setInvoices(p => p.filter(i => i.id !== id))
-    return { error }
+    await invoicesApi.delete(id)
+    setInvoices(p => p.filter(i => i.id !== id))
   }
 
-  // Fiscal summary for current quarter
-  const ivaCollected  = invoices.reduce((s, i) => s + (i.iva_amount || 0), 0)
-  const irpfRetained  = invoices.reduce((s, i) => s + (i.irpf_amount || 0), 0)
-  const totalBilled   = invoices.reduce((s, i) => s + (i.total || 0), 0)
+  const ivaCollected  = invoices.reduce((s, i) => s + Number(i.iva_amount  || 0), 0)
+  const irpfRetained  = invoices.reduce((s, i) => s + Number(i.irpf_amount || 0), 0)
+  const totalBilled   = invoices.reduce((s, i) => s + Number(i.total       || 0), 0)
 
   return {
     invoices, loading, reload: load,

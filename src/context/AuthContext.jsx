@@ -1,53 +1,41 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { authApi } from '../utils/api'
 
-const AuthContext = createContext(null)
-
-const USERS_KEY = 'ab_users'
-const SESSION_KEY = 'ab_session'
-
-const DEFAULT_USERS = [
-  { email: 'abelboudiseno@gmail.com', password: 'abelbou2024', name: 'Abel Bou' }
-]
+const AuthContext = createContext()
+const STORAGE_KEY = 'ab_session'
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(null)
+  const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!localStorage.getItem(USERS_KEY)) {
-      localStorage.setItem(USERS_KEY, JSON.stringify(DEFAULT_USERS))
-    }
-    const s = localStorage.getItem(SESSION_KEY)
-    if (s) { try { setUser(JSON.parse(s)) } catch {} }
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) setUser(JSON.parse(raw))
+    } catch { /* ignore */ }
     setLoading(false)
   }, [])
 
-  function login(email, password) {
-    const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]')
-    const found = users.find(
-      u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    )
-    if (!found) return { ok: false, error: 'Email o contraseña incorrectos' }
-    const u = { email: found.email, name: found.name }
-    setUser(u)
-    localStorage.setItem(SESSION_KEY, JSON.stringify(u))
-    return { ok: true }
+  async function login(email, password) {
+    try {
+      const res = await authApi.login(email, password)
+      const session = { email: res.email, name: res.name }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
+      setUser(session)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: e.message || 'Email o contraseña incorrectos' }
+    }
   }
 
   function logout() {
+    localStorage.removeItem(STORAGE_KEY)
     setUser(null)
-    localStorage.removeItem(SESSION_KEY)
   }
 
   function changePassword(current, next) {
-    const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]')
-    const idx   = users.findIndex(
-      u => u.email.toLowerCase() === user?.email?.toLowerCase() && u.password === current
-    )
-    if (idx === -1) return { ok: false, error: 'Contraseña actual incorrecta' }
-    users[idx].password = next
-    localStorage.setItem(USERS_KEY, JSON.stringify(users))
-    return { ok: true }
+    // Pendiente de endpoint en la API (auth.php solo soporta login por ahora)
+    return { ok: false, error: 'Cambio de contraseña no disponible todavía' }
   }
 
   return (
@@ -57,4 +45,6 @@ export function AuthProvider({ children }) {
   )
 }
 
-export const useAuth = () => useContext(AuthContext)
+export function useAuth() {
+  return useContext(AuthContext)
+}

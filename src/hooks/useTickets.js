@@ -1,22 +1,20 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../utils/supabase'
+import { ticketsApi } from '../utils/api'
 import { useAuth } from '../context/AuthContext'
 
 export function useTickets() {
   const { user } = useAuth()
   const uid = user?.email || 'default'
-  const [tickets,  setTickets]  = useState([])
-  const [loading,  setLoading]  = useState(true)
+  const [tickets,   setTickets]   = useState([])
+  const [loading,   setLoading]   = useState(true)
   const [uploading, setUploading] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase
-      .from('tickets')
-      .select('*')
-      .eq('user_id', uid)
-      .order('date', { ascending: false })
-    setTickets(data || [])
+    try {
+      const data = await ticketsApi.list(uid)
+      setTickets(data)
+    } catch (e) { console.error(e) }
     setLoading(false)
   }, [uid])
 
@@ -25,65 +23,25 @@ export function useTickets() {
   async function uploadTicket(file, fields) {
     setUploading(true)
     try {
-      const ext      = file.name.split('.').pop()
-      const fileName = `${uid}/${Date.now()}.${ext}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('tickets')
-        .upload(fileName, file)
-
-      let fileUrl  = ''
-      let filePath = ''
-
-      if (uploadError) {
-        // El bucket de Storage no está configurado — guardamos el ticket sin archivo
-        console.warn('Storage no disponible, guardando ticket sin archivo:', uploadError.message)
-      } else {
-        const { data: urlData } = await supabase.storage
-          .from('tickets')
-          .createSignedUrl(fileName, 60 * 60 * 24 * 365)
-        fileUrl  = urlData?.signedUrl || ''
-        filePath = fileName
-      }
-
-      const { data, error } = await supabase
-        .from('tickets')
-        .insert({
-          ...fields,
-          user_id:   uid,
-          file_url:  fileUrl,
-          file_name: fileUrl ? file.name : '',
-          file_path: filePath,
-        })
-        .select().single()
-
-      if (!error) setTickets(p => [data, ...p])
-      return { data, error }
-    } finally {
-      setUploading(false)
-    }
+      const data = await ticketsApi.create(uid, fields, file)
+      setTickets(p => [data, ...p])
+      return { data }
+    } finally { setUploading(false) }
   }
 
   async function addTicketNoFile(fields) {
-    const { data, error } = await supabase
-      .from('tickets')
-      .insert({ ...fields, user_id: uid })
-      .select().single()
-    if (!error) setTickets(p => [data, ...p])
-    return { data, error }
+    const data = await ticketsApi.create(uid, fields, null)
+    setTickets(p => [data, ...p])
+    return { data }
   }
 
-  async function deleteTicket(id, filePath) {
-    if (filePath) {
-      await supabase.storage.from('tickets').remove([filePath])
-    }
-    const { error } = await supabase.from('tickets').delete().eq('id', id)
-    if (!error) setTickets(p => p.filter(t => t.id !== id))
-    return { error }
+  async function deleteTicket(id) {
+    await ticketsApi.delete(id)
+    setTickets(p => p.filter(t => t.id !== id))
   }
 
-  const ivaDeductible = tickets.reduce((s, t) => s + (t.iva_amount || 0), 0)
-  const totalGastos   = tickets.reduce((s, t) => s + (t.amount || 0), 0)
+  const ivaDeductible = tickets.reduce((s, t) => s + Number(t.iva_amount || 0), 0)
+  const totalGastos   = tickets.reduce((s, t) => s + Number(t.amount     || 0), 0)
 
   return {
     tickets, loading, uploading, reload: load,
