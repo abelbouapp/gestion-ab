@@ -13,8 +13,7 @@ export default function Login() {
   async function handleSubmit(e) {
     e.preventDefault()
     setError(''); setLoading(true)
-    await new Promise(r => setTimeout(r, 350))
-    const res = login(form.email, form.password)
+    const res = await login(form.email, form.password)
     setLoading(false)
     if (res.ok) navigate('/')
     else setError(res.error)
