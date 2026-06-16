@@ -51,7 +51,7 @@ export function useInvoices(clientId = null) {
 
   async function updateInvoice(id, fields) {
     const data = await invoicesApi.update(id, fields)
-    setInvoices(p => p.map(i => i.id === id ? data : i))
+    setInvoices(p => p.map(i => i.id === id ? { ...i, ...data } : i))
     return { data }
   }
 

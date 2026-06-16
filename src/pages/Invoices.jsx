@@ -5,23 +5,21 @@ import { useClients } from '../hooks/useData'
 import { useInvoices } from '../hooks/useInvoices'
 import { Btn, Empty, Spinner, StatusBadge, SeriesBadge } from '../components/UI'
 import { formatCurrency, formatDate } from '../utils/helpers'
-import { generateInvoicePDF, parseOcClient } from '../utils/pdfGenerator'
+import { generateInvoicePDF } from '../utils/pdfGenerator'
 import InvoiceModal from '../components/InvoiceModal'
 import InvoiceViewModal from '../components/InvoiceViewModal'
 import s from './Invoices.module.css'
 
+// ✅ Helper: always convert to a safe number (MySQL returns decimals as strings)
+const n = (v) => {
+  const x = Number(v)
+  return Number.isFinite(x) ? x : 0
+}
+
 export default function Invoices() {
   const [params] = useSearchParams()
   const { clients } = useClients()
-  const { invoices, loading, addInvoice, updateInvoice, deleteInvoice, finalizeInvoice } = useInvoices()
-
-  async function handleStatusChange(inv, newStatus) {
-    // Si pasa de borrador a enviada/pagada → asignar número fiscal
-    if (inv.number === 'BORRADOR' && newStatus !== 'draft') {
-      await finalizeInvoice(inv.id, inv.series)
-    }
-    updateInvoice(inv.id, { status: newStatus })
-  }
+  const { invoices, loading, addInvoice, updateInvoice, deleteInvoice } = useInvoices()
   const [modal,    setModal]   = useState(params.get('client') ? { clientId: params.get('client') } : null)
   const [viewing,  setViewing] = useState(null)
   const [series,   setSeries]  = useState('all') // all | D | P
@@ -35,10 +33,11 @@ export default function Invoices() {
     return true
   })
 
-  const ivaD = invoices.filter(i=>i.series==='D').reduce((s,i)=>s+(i.iva_amount||0),0)
-  const ivaP = invoices.filter(i=>i.series==='P').reduce((s,i)=>s+(i.iva_amount||0),0)
-  const totalD = invoices.filter(i=>i.series==='D').reduce((s,i)=>s+(i.total||0),0)
-  const totalP = invoices.filter(i=>i.series==='P').reduce((s,i)=>s+(i.total||0),0)
+  // ✅ All wrapped with n() to avoid NaN from string decimals
+  const ivaD   = invoices.filter(i=>i.series==='D').reduce((s,i)=>s + n(i.iva_amount), 0)
+  const ivaP   = invoices.filter(i=>i.series==='P').reduce((s,i)=>s + n(i.iva_amount), 0)
+  const totalD = invoices.filter(i=>i.series==='D').reduce((s,i)=>s + n(i.total), 0)
+  const totalP = invoices.filter(i=>i.series==='P').reduce((s,i)=>s + n(i.total), 0)
 
   if (loading) return <div className={s.page}><Spinner /></div>
 
@@ -52,6 +51,10 @@ export default function Invoices() {
         <Btn onClick={() => setModal({})} disabled={clients.length===0} icon={<Plus size={15}/>}>
           Nueva factura
         </Btn>
+      </div>
+
+      <div style={{ background:'var(--brand-light)', border:'1px solid #b8e8cc', borderRadius:'var(--radius)', padding:'10px 14px', fontSize:13, color:'#1a5c34', marginBottom:16 }}>
+        💡 Las facturas en <strong>Borrador</strong> no tienen número fiscal todavía, pero puedes descargar el PDF para enviarlo al cliente como propuesta (aparecerá marcado como "BORRADOR"). El número oficial (001D, 002D…) se asigna automáticamente al cambiar el estado a <strong>Enviada</strong> o <strong>Pagada</strong>.
       </div>
 
       {/* Summary by series */}
@@ -97,37 +100,39 @@ export default function Invoices() {
           <div className={s.list}>
             {filtered.map(inv => {
               const client = clients.find(c => c.id === inv.client_id)
-              const ocClient = !client ? parseOcClient(inv.notes) : null
-              const clientName = client?.name || ocClient?.name || '—'
               const isD    = inv.series === 'D'
+              const hasNumber = !!inv.number
               return (
                 <div key={inv.id}
                   className={`${s.row} ${isD ? s.rowD : s.rowP}`}
                   onClick={() => setViewing(inv)}
                 >
                   <div className={s.seriesStripe} style={{ background: isD?'var(--series-d)':'var(--series-p)' }}/>
-                  <div className={s.invNum}>{inv.number}</div>
+                  <div className={s.invNum} style={!hasNumber ? { color:'var(--muted)', fontStyle:'italic', fontFamily:'inherit' } : {}}>
+                    {hasNumber ? inv.number : 'Borrador'}
+                  </div>
                   <div className={s.invClient}>
-                    <div>{clientName}{ocClient && <span style={{ fontSize: 10, color: 'var(--muted)', marginLeft: 5 }}>ocasional</span>}</div>
+                    <div>{client?.name || '—'}</div>
                     <SeriesBadge series={inv.series} />
                   </div>
                   <div className={s.invDate}>{formatDate(inv.date)}</div>
                   <div className={s.invAmounts}>
-                    <div className={s.invTotal}>{formatCurrency(inv.total)}</div>
-                    {inv.applies_irpf && (
-                      <div className={s.irpfNote}>IRPF -{formatCurrency(inv.irpf_amount)}</div>
+                    <div className={s.invTotal}>{formatCurrency(n(inv.total))}</div>
+                    {inv.applies_irpf && n(inv.irpf_amount) > 0 && (
+                      <div className={s.irpfNote}>IRPF -{formatCurrency(n(inv.irpf_amount))}</div>
                     )}
                   </div>
                   <StatusBadge status={inv.status} />
                   <select className={s.statusSel} value={inv.status}
                     onClick={e => e.stopPropagation()}
-                    onChange={e => { e.stopPropagation(); handleStatusChange(inv, e.target.value) }}>
+                    onChange={e => updateInvoice(inv.id, { status: e.target.value })}>
                     <option value="draft">Borrador</option>
                     <option value="sent">Enviada</option>
                     <option value="paid">Pagada</option>
                   </select>
                   <button className={s.dlBtn}
-                    onClick={e => { e.stopPropagation(); generateInvoicePDF(inv, client || null, myInfo).catch(console.error) }}>
+                    title={hasNumber ? 'Descargar PDF' : 'Descargar borrador (sin número fiscal)'}
+                    onClick={e => { e.stopPropagation(); generateInvoicePDF(inv, client, myInfo) }}>
                     <Download size={14}/>
                   </button>
                 </div>
@@ -140,11 +145,7 @@ export default function Invoices() {
       {modal !== null && (
         <InvoiceModal
           initial={modal} clients={clients}
-          onSave={async data => {
-            const { error } = await addInvoice(data)
-            if (error) { alert('Error al crear factura: ' + error.message); return }
-            setModal(null)
-          }}
+          onSave={async data => { await addInvoice(data); setModal(null) }}
           onClose={() => setModal(null)}
         />
       )}
@@ -152,10 +153,7 @@ export default function Invoices() {
         <InvoiceViewModal
           invoice={viewing} clients={clients} myInfo={myInfo}
           onClose={() => setViewing(null)}
-          onStatusChange={async st => {
-            await handleStatusChange(viewing, st)
-            setViewing(p => ({ ...p, status: st, number: p.number === 'BORRADOR' && st !== 'draft' ? '...' : p.number }))
-          }}
+          onStatusChange={st => { updateInvoice(viewing.id,{status:st}).then(r => setViewing(r.data)) }}
           onDelete={async () => { await deleteInvoice(viewing.id); setViewing(null) }}
         />
       )}

@@ -31,22 +31,27 @@ export default function Quotes() {
   const filtered = quotes.filter(q => filterStatus === 'all' || q.status === filterStatus)
 
   async function handleSave(data) {
-    if (modal?.id) {
-      const { error } = await updateQuote(modal.id, data)
-      if (error) { alert('Error al guardar presupuesto: ' + error.message); return }
-    } else {
-      const { error } = await addQuote(data)
-      if (error) { alert('Error al crear presupuesto: ' + error.message); return }
+    try {
+      if (modal?.id) {
+        await updateQuote(modal.id, data)
+      } else {
+        await addQuote(data)
+      }
+      setModal(null)
+    } catch (e) {
+      alert('Error al guardar presupuesto: ' + e.message)
     }
-    setModal(null)
   }
 
   async function handleConvert(invoiceData) {
-    const { error } = await addInvoice(invoiceData)
-    if (error) { alert('Error al crear factura: ' + error.message); return }
-    await updateQuote(converting.id, { status: 'accepted', converted_to_invoice: true })
-    setConverting(null)
-    alert('✅ Factura creada. Puedes verla en la sección Facturas.')
+    try {
+      await addInvoice(invoiceData)
+      await updateQuote(converting.id, { status: 'accepted', converted_to_invoice: true })
+      setConverting(null)
+      alert('✅ Factura creada. Puedes verla en la sección Facturas.')
+    } catch (e) {
+      alert('Error al crear factura: ' + e.message)
+    }
   }
 
   const stats = {
@@ -197,10 +202,12 @@ export default function Quotes() {
       {converting && (
         <InvoiceModal
           initial={{
-            clientId: converting.client_id,
-            lines:    converting.lines,
-            iva_rate: converting.iva_rate,
-            notes:    converting.notes,
+            clientId:     converting.client_id,
+            lines:        Array.isArray(converting.lines) ? converting.lines : [],
+            iva_rate:     converting.iva_rate,
+            irpf_rate:    converting.irpf_rate,
+            applies_irpf: converting.applies_irpf,
+            notes:        converting.notes,
           }}
           clients={clients}
           onSave={handleConvert}

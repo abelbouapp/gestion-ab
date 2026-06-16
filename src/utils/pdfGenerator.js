@@ -2,110 +2,117 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { formatDate, formatCurrency } from './helpers'
 
+// ── Occasional client helpers ──────────────────────────────
+// "Cliente ocasional" data is stored inside the `notes` field as:
+//   _oc_:{"name":"...","nif":"...","address":"...","email":"...","phone":"..."}
+//   <resto de notas reales, si las hay>
+
 export function parseOcClient(notes) {
-  if (!notes?.startsWith('_oc_:')) return null
+  if (!notes || !notes.startsWith('_oc_:')) return null
   try {
-    const firstLine = notes.split('\n')[0].replace('_oc_:', '')
-    return JSON.parse(firstLine)
-  } catch { return null }
+    const firstLine = notes.split('\n')[0]
+    const json = firstLine.replace('_oc_:', '')
+    return JSON.parse(json)
+  } catch {
+    return null
+  }
 }
 
 export function getRealNotes(notes) {
-  if (!notes?.startsWith('_oc_:')) return notes || ''
-  return notes.split('\n').slice(1).join('\n').trim()
+  if (!notes) return ''
+  if (!notes.startsWith('_oc_:')) return notes
+  const lines = notes.split('\n')
+  return lines.slice(1).join('\n').trim()
 }
 
-async function loadLogoBase64() {
-  try {
-    const res = await fetch(import.meta.env.BASE_URL + 'logo.png')
-    if (!res.ok) return null
-    const blob = await res.blob()
-    return new Promise(resolve => {
-      const reader = new FileReader()
-      reader.onloadend = () => resolve(reader.result)
-      reader.onerror  = () => resolve(null)
-      reader.readAsDataURL(blob)
-    })
-  } catch { return null }
-}
-
-export async function generateInvoicePDF(invoice, client, myInfo = {}) {
+// ── PDF generator ────────────────────────────────────────────
+export function generateInvoicePDF(invoice, client, myInfo = {}) {
   const doc = new jsPDF()
   const isD = invoice.series === 'D'
   const accentR = isD ? 79  : 249
   const accentG = isD ? 127 : 115
   const accentB = isD ? 255 : 22
 
-  const ocClient  = !client ? parseOcClient(invoice.notes) : null
-  const clientObj = client || ocClient || {}
-  const realNotes = getRealNotes(invoice.notes)
+  const isDraft = !invoice.number
 
-  // ── Fondo header
+  // Resolve client info — either a saved client, or an "occasional" one stored in notes
+  const occasional = !client ? parseOcClient(invoice.notes) : null
+  const clientName    = client?.name    || occasional?.name    || '—'
+  const clientNif     = client?.nif     || occasional?.nif     || ''
+  const clientAddress = client?.address || occasional?.address || ''
+  const clientEmail   = client?.email   || occasional?.email   || ''
+  const realNotes     = getRealNotes(invoice.notes)
+
+  // ── Background header band
   doc.setFillColor(247, 249, 247)
   doc.rect(0, 0, 210, 55, 'F')
 
-  // ── Barra lateral de color
+  // ── Accent left stripe
   doc.setFillColor(accentR, accentG, accentB)
   doc.rect(0, 0, 5, 297, 'F')
 
-  // ── Logo arriba a la izquierda
-  const logoB64 = await loadLogoBase64()
-  if (logoB64) {
-    // Logo cuadrado ~28x28, dejando margen a la barra lateral
-    doc.addImage(logoB64, 'PNG', 12, 8, 28, 28)
+  // ── Logo o nombre de marca
+  if (myInfo.logo) {
+    const fmt = myInfo.logo.startsWith('data:image/png') ? 'PNG' : 'JPEG'
+    doc.addImage(myInfo.logo, fmt, 14, 8, 0, 30)
   } else {
-    // Fallback texto si no carga
     doc.setFont('helvetica', 'bolditalic')
     doc.setFontSize(22)
     doc.setTextColor(26, 46, 34)
-    doc.text('Abel Bou', 14, 24)
+    doc.text(myInfo.company || myInfo.name || 'Abel Bou', 14, 22)
   }
 
-  // ── Píldora de serie debajo del logo — fondo transparente, borde de color
-  const pillLabel = isD ? 'SERVICIOS DIGITALES' : 'PRODUCTOS'
-  const pillW     = isD ? 36 : 24
-  const pillX     = 12
-  const pillY     = 38
-  // Solo borde, sin relleno
-  doc.setDrawColor(accentR, accentG, accentB)
-  doc.setLineWidth(0.7)
-  doc.roundedRect(pillX, pillY, pillW, 7, 2, 2, 'S')
-  doc.setFontSize(6)
+  // Series badge
+  doc.setFillColor(accentR, accentG, accentB)
+  doc.roundedRect(14, 26, isD ? 36 : 40, 9, 2, 2, 'F')
+  doc.setFontSize(8)
   doc.setFont('helvetica', 'bold')
-  doc.setTextColor(accentR, accentG, accentB)
-  doc.text(pillLabel, pillX + pillW / 2, pillY + 4.7, { align: 'center' })
+  doc.setTextColor(255, 255, 255)
+  doc.text(isD ? 'SERVICIOS DIGITALES' : 'PRODUCTOS', 16, 32)
 
-  // ── Número de factura — arriba a la derecha
+  // Invoice number & dates (right side) — or "BORRADOR" if not yet numbered
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(20)
+  doc.setFontSize(18)
   doc.setTextColor(26, 46, 34)
-  doc.text(invoice.number, 196, 20, { align: 'right' })
+  doc.text(isDraft ? 'BORRADOR' : invoice.number, 196, 22, { align: 'right' })
 
-  // ── Fechas debajo del número
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8.5)
+  doc.setFontSize(9)
   doc.setTextColor(100, 120, 110)
-  doc.text(`Fecha: ${formatDate(invoice.date)}`, 196, 29, { align: 'right' })
+  doc.text(`Fecha: ${formatDate(invoice.date)}`, 196, 30, { align: 'right' })
   if (invoice.due_date) {
-    doc.text(`Vencimiento: ${formatDate(invoice.due_date)}`, 196, 36, { align: 'right' })
+    doc.text(`Vencimiento: ${formatDate(invoice.due_date)}`, 196, 37, { align: 'right' })
   }
 
-  // ── Badge de estado — solo visible si es borrador
-  if (invoice.status === 'draft' || !invoice.status) {
-    doc.setFillColor(180, 180, 180)
-    doc.roundedRect(163, 40, 29, 8, 2, 2, 'F')
-    doc.setFontSize(7)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(255, 255, 255)
-    doc.text('BORRADOR', 177.5, 45.5, { align: 'center' })
+  // Status badge
+  const statusMap = { draft: 'BORRADOR', sent: 'ENVIADA', paid: 'PAGADA' }
+  const statusColors = {
+    draft: [200, 200, 200],
+    sent:  [accentR, accentG, accentB],
+    paid:  [34, 197, 94]
+  }
+  const sc = statusColors[invoice.status] || statusColors.draft
+  doc.setFillColor(...sc)
+  doc.roundedRect(155, 40, 41, 9, 2, 2, 'F')
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(255, 255, 255)
+  doc.text(statusMap[invoice.status] || 'BORRADOR', 175.5, 46, { align: 'center' })
+
+  // ── Draft notice banner
+  if (isDraft) {
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(8.5)
+    doc.setTextColor(180, 130, 30)
+    doc.text('Documento provisional para revisión del cliente — sin número fiscal asignado, no válido como factura oficial.', 14, 50)
   }
 
-  // ── Separador
+  // Divider
   doc.setDrawColor(226, 234, 228)
   doc.setLineWidth(0.5)
   doc.line(14, 58, 196, 58)
 
-  // ── Emisor / Cliente
+  // Issuer + Client
   let y = 66
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7)
@@ -117,44 +124,47 @@ export async function generateInvoicePDF(invoice, client, myInfo = {}) {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
   doc.setTextColor(26, 46, 34)
-  doc.text(myInfo.company || 'Abel Bou', 14, y)
-  doc.text(clientObj.name || '—', 110, y)
+  doc.text(myInfo.company || myInfo.name || 'Abel Bou', 14, y)
+  doc.text(clientName, 110, y)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
   doc.setTextColor(100, 120, 110)
   let iy = y + 6, cy = y + 6
-  if (myInfo.name)    { doc.text(myInfo.name, 14, iy); iy += 5 }
+  if (myInfo.name && myInfo.company && myInfo.name !== myInfo.company) {
+    doc.text(myInfo.name, 14, iy); iy += 5
+  }
   if (myInfo.nif)     { doc.text(`NIF: ${myInfo.nif}`, 14, iy); iy += 5 }
   if (myInfo.address) { doc.text(myInfo.address, 14, iy); iy += 5 }
   if (myInfo.email)   { doc.text(myInfo.email, 14, iy); iy += 5 }
   if (myInfo.phone)   { doc.text(myInfo.phone, 14, iy); iy += 5 }
-  if (clientObj.nif)     { doc.text(`NIF: ${clientObj.nif}`, 110, cy); cy += 5 }
-  if (clientObj.address) { doc.text(clientObj.address, 110, cy); cy += 5 }
-  if (clientObj.email)   { doc.text(clientObj.email, 110, cy); cy += 5 }
-  if (clientObj.phone)   { doc.text(clientObj.phone, 110, cy); cy += 5 }
+  if (clientNif)     { doc.text(`NIF: ${clientNif}`, 110, cy); cy += 5 }
+  if (clientAddress) { doc.text(clientAddress, 110, cy); cy += 5 }
+  if (clientEmail)   { doc.text(clientEmail, 110, cy); cy += 5 }
 
-  // ── Tabla de líneas
+  // Lines table
   const tableY = Math.max(iy, cy) + 8
   const lines  = invoice.lines || []
-
-  // Detectar modo paquete: primera línea tiene precio, el resto tienen precio=0
-  const isPackage = lines.length > 1 && Number(lines[0].price) > 0 && lines.slice(1).every(l => Number(l.price) === 0)
+  const isPackage = lines.length > 1 && lines.filter(l => Number(l.price) > 0).length === 1
 
   if (isPackage) {
-    const pkgTotal = Number(lines[0].qty) * Number(lines[0].price)
     autoTable(doc, {
       startY: tableY,
       head: [['Conceptos incluidos']],
-      body: [
-        ...lines.map(l => [l.desc]),
-        [{ content: `Precio del paquete: ${formatCurrency(pkgTotal)}`, styles: { halign: 'right', fontStyle: 'bold', textColor: [accentR, accentG, accentB] } }],
-      ],
+      body: lines.map(l => [l.desc]),
       styles: { font: 'helvetica', fontSize: 9, cellPadding: 5, textColor: [26, 46, 34] },
       headStyles: { fillColor: [26, 46, 34], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
       alternateRowStyles: { fillColor: [247, 249, 247] },
-      columnStyles: { 0: { cellWidth: 'auto' } },
+      columnStyles: { 0: { cellWidth: 166 } },
     })
+    const pkgY = doc.lastAutoTable.finalY + 8
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.setTextColor(accentR, accentG, accentB)
+    doc.text(`Precio del paquete: ${formatCurrency(invoice.subtotal)}`, 196, pkgY, { align: 'right' })
+    doc.setTextColor(100, 120, 110)
+    doc.setFont('helvetica', 'normal')
+    var fy = pkgY + 10
   } else {
     autoTable(doc, {
       startY: tableY,
@@ -177,16 +187,17 @@ export async function generateInvoicePDF(invoice, client, myInfo = {}) {
         4: { halign: 'right', fontStyle: 'bold' },
       },
     })
+    var fy = doc.lastAutoTable.finalY + 6
   }
 
-  // ── Totales
-  const fy = doc.lastAutoTable.finalY + 6
+  // Totals block
   const rx = 196
 
   doc.setFontSize(9)
   doc.setTextColor(100, 120, 110)
   doc.text('Base imponible:', rx - 50, fy, { align: 'right' })
   doc.text(formatCurrency(invoice.subtotal), rx, fy, { align: 'right' })
+
   doc.text(`IVA (${invoice.iva_rate || 21}%):`, rx - 50, fy + 7, { align: 'right' })
   doc.text(formatCurrency(invoice.iva_amount), rx, fy + 7, { align: 'right' })
 
@@ -199,6 +210,7 @@ export async function generateInvoicePDF(invoice, client, myInfo = {}) {
     doc.setTextColor(100, 120, 110)
   }
 
+  // Total box
   totalY += 4
   doc.setFillColor(accentR, accentG, accentB)
   doc.roundedRect(rx - 76, totalY, 76, 13, 2, 2, 'F')
@@ -208,40 +220,29 @@ export async function generateInvoicePDF(invoice, client, myInfo = {}) {
   doc.text('TOTAL:', rx - 50, totalY + 8.5, { align: 'right' })
   doc.text(formatCurrency(invoice.total), rx - 3, totalY + 8.5, { align: 'right' })
 
-  // ── Notas (justo bajo los totales)
-  if (realNotes) {
-    const ny = totalY + 18
+  // IBAN
+  if (myInfo.iban) {
+    doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
-    doc.setFont('helvetica', 'italic')
+    doc.setTextColor(138, 168, 152)
+    doc.text(`Transferencia a: ${myInfo.iban}`, 14, totalY + 14)
+  }
+
+  // Notes (occasional client header already stripped via getRealNotes)
+  if (realNotes) {
+    const ny = totalY + (myInfo.iban ? 22 : 16)
+    doc.setFontSize(8)
     doc.setTextColor(138, 168, 152)
     doc.text(`Notas: ${realNotes}`, 14, ny)
   }
 
-  // ── IBAN — fijo arriba del footer
-  if (myInfo.iban) {
-    const ibanBoxY = 262
-    doc.setFillColor(247, 249, 247)
-    doc.roundedRect(14, ibanBoxY, 120, 14, 2, 2, 'F')
-    doc.setDrawColor(accentR, accentG, accentB)
-    doc.setLineWidth(0.6)
-    doc.roundedRect(14, ibanBoxY, 120, 14, 2, 2, 'S')
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(7.5)
-    doc.setTextColor(74, 99, 88)
-    doc.text('PAGO POR TRANSFERENCIA', 20, ibanBoxY + 5.5)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9)
-    doc.setTextColor(accentR, accentG, accentB)
-    doc.text(myInfo.iban, 20, ibanBoxY + 11)
-  }
-
-  // ── Footer
+  // Footer
   doc.setDrawColor(226, 234, 228)
   doc.line(14, 283, 196, 283)
   doc.setFontSize(7)
-  doc.setFont('helvetica', 'normal')
   doc.setTextColor(160, 180, 170)
-  doc.text('Abel Bou · Desarrollador web · Diseñador Gráfico · Creativos', 105, 288, { align: 'center' })
+  doc.text('Abel Bou — Gestión de clientes', 105, 288, { align: 'center' })
 
-  doc.save(`${invoice.number}_${clientObj.name || 'factura'}.pdf`)
+  const fileLabel = invoice.number || 'BORRADOR'
+  doc.save(`${fileLabel}_${clientName}.pdf`)
 }

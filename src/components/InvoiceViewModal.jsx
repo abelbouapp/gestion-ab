@@ -42,7 +42,7 @@ export default function InvoiceViewModal({ invoice: inv, clients, myInfo = {}, o
 
         <div className={s.parties}>
           {[
-            { label:'Emisor',  name: myInfo.company||myInfo.name||'—', nif: myInfo.nif,      addr: myInfo.address,      email: myInfo.email,      phone: myInfo.phone },
+            { label:'Emisor',  name: myInfo.company||myInfo.name||'—', legalName: (myInfo.name && myInfo.company && myInfo.name !== myInfo.company) ? myInfo.name : null, nif: myInfo.nif, addr: myInfo.address, email: myInfo.email, phone: myInfo.phone },
             { label:'Cliente', name: clientObj.name||'—',              nif: clientObj.nif,   addr: clientObj.address,   email: clientObj.email,   phone: clientObj.phone,
               occasional: !!ocClient },
           ].map(p => (
@@ -52,6 +52,7 @@ export default function InvoiceViewModal({ invoice: inv, clients, myInfo = {}, o
                 {p.occasional && <span style={{ marginLeft:6, fontSize:10, color:'var(--muted)', fontWeight:400 }}>ocasional</span>}
               </div>
               <div className={s.partyName}>{p.name}</div>
+              {p.legalName && <div className={s.partyInfo}>{p.legalName}</div>}
               {p.nif   && <div className={s.partyInfo}>NIF: {p.nif}</div>}
               {p.addr  && <div className={s.partyInfo}>{p.addr}</div>}
               {p.email && <div className={s.partyInfo}>{p.email}</div>}

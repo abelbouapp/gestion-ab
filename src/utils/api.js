@@ -82,7 +82,8 @@ export const ticketsApi = {
 
 // ── AUTH ─────────────────────────────────────────────────────
 export const authApi = {
-  login: (email, password) => post('auth.php', { email, password }),
+  login:          (email, password)      => post('auth.php', { action: 'login', email, password }),
+  changePassword: (email, current, next) => post('auth.php', { action: 'change_password', email, current, next }),
 }
 
 // ── SETTINGS ─────────────────────────────────────────────────

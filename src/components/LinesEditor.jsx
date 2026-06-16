@@ -9,8 +9,11 @@ import { formatCurrency } from '../utils/helpers'
  *   - "package": las líneas son items descriptivos, el precio total es único al final
  */
 export default function LinesEditor({ lines, setLines, setLine }) {
-  const [mode, setMode] = useState('detail') // 'detail' | 'package'
-  const [pkgPrice, setPkgPrice] = useState('')
+  const isInitiallyPackage = lines.length > 1 && lines.filter(l => Number(l.price) > 0).length === 1
+  const initialPkgPrice    = isInitiallyPackage ? String(lines.find(l => Number(l.price) > 0)?.price || '') : ''
+
+  const [mode, setMode] = useState(isInitiallyPackage ? 'package' : 'detail')
+  const [pkgPrice, setPkgPrice] = useState(initialPkgPrice)
 
   function addLine() {
     setLines(ls => [...ls, { desc: '', qty: 1, unit: 'ud', price: 0 }])

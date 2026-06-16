@@ -34,7 +34,7 @@ export function useQuotes() {
 
   async function updateQuote(id, fields) {
     const data = await quotesApi.update(id, fields)
-    setQuotes(p => p.map(q => q.id === id ? data : q))
+    setQuotes(p => p.map(q => q.id === id ? { ...q, ...data } : q))
     return { data }
   }
 

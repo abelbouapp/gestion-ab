@@ -16,7 +16,10 @@ export default function Settings() {
 
   useEffect(() => {
     settingsApi.get(uid).then(data => {
-      setInfo(data || {})
+      const d = data || {}
+      setInfo(d)
+      // ✅ Sync to localStorage so pdfGenerator.js can read it even without re-saving
+      localStorage.setItem('ab_myinfo', JSON.stringify(d))
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [uid])
@@ -26,7 +29,6 @@ export default function Settings() {
   async function saveInfo(e) {
     e.preventDefault()
     await settingsApi.save(uid, info)
-    // Also keep in localStorage for PDF generation (offline)
     localStorage.setItem('ab_myinfo', JSON.stringify(info))
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
@@ -36,9 +38,10 @@ export default function Settings() {
     e.preventDefault()
     if (pwd.next !== pwd.confirm) { setPwdMsg({ ok: false, msg: 'Las contraseñas no coinciden' }); return }
     if (pwd.next.length < 6)      { setPwdMsg({ ok: false, msg: 'Mínimo 6 caracteres' }); return }
-    const r = changePassword(pwd.current, pwd.next)
-    setPwdMsg({ ok: r.ok, msg: r.ok ? '¡Contraseña actualizada!' : r.error })
-    if (r.ok) setPwd({ current: '', next: '', confirm: '' })
+    changePassword(pwd.current, pwd.next).then(r => {
+      setPwdMsg({ ok: r.ok, msg: r.ok ? '¡Contraseña actualizada!' : r.error })
+      if (r.ok) setPwd({ current: '', next: '', confirm: '' })
+    })
   }
 
   if (loading) return <div className={s.page}><Spinner /></div>
@@ -51,6 +54,26 @@ export default function Settings() {
       <section className={s.section}>
         <h2 className={s.sTitle}>Mis datos fiscales <span className={s.sBadge}>Aparecen en todas las facturas</span></h2>
         <form onSubmit={saveInfo} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {/* Logo */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            {info.logo && (
+              <img src={info.logo} alt="logo" style={{ height: 52, maxWidth: 160, objectFit: 'contain', borderRadius: 6, border: '1px solid var(--border)', padding: 4, background: '#fff' }} />
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Logo (aparece en el PDF)</label>
+              <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                onChange={e => {
+                  const file = e.target.files[0]
+                  if (!file) return
+                  const reader = new FileReader()
+                  reader.onload = ev => si('logo', ev.target.result)
+                  reader.readAsDataURL(file)
+                }} />
+              {info.logo && <button type="button" style={{ fontSize: 11, color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }} onClick={() => si('logo', '')}>Quitar logo</button>}
+            </div>
+          </div>
+
           <Row>
             <Field label="Nombre completo">
               <input value={info.name || ''} onChange={e => si('name', e.target.value)} placeholder="Abel Bou" />

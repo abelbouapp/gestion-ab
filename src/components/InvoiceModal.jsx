@@ -7,18 +7,20 @@ export default function InvoiceModal({ initial = {}, clients, onSave, onClose, c
   const [clientMode, setClientMode] = useState('saved') // 'saved' | 'occasional'
   const [oc, setOc] = useState({ name: '', nif: '', address: '', email: '', phone: '' }) // occasional client
   const [f, setF] = useState({
-    client_id: initial.clientId || '',
-    series: 'D',
-    date: new Date().toISOString().split('T')[0],
-    due_date: '',
-    iva_rate: 21,
-    irpf_rate: 7,
-    applies_irpf: false,
-    notes: '',
-    status: 'draft',
+    client_id:    initial.clientId || initial.client_id || '',
+    series:       initial.series || 'D',
+    date:         new Date().toISOString().split('T')[0],
+    due_date:     '',
+    iva_rate:     initial.iva_rate || 21,
+    irpf_rate:    initial.irpf_rate || 7,
+    applies_irpf: initial.applies_irpf || false,
+    notes:        initial.notes || '',
+    status:       convertingFrom ? 'sent' : 'draft',
   })
   const [lines, setLines] = useState(
-    initial.lines || [{ desc: '', qty: 1, unit: 'ud', price: 0 }]
+    Array.isArray(initial.lines) && initial.lines.length
+      ? initial.lines
+      : [{ desc: '', qty: 1, unit: 'ud', price: 0 }]
   )
 
   const set = (k, v) => setF(p => ({ ...p, [k]: v }))

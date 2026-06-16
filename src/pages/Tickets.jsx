@@ -1,18 +1,25 @@
 import { useState, useRef } from 'react'
-import { Upload, Trash2, ExternalLink, Receipt, FileImage } from 'lucide-react'
+import { Upload, Trash2, ExternalLink, Receipt, FileImage, File } from 'lucide-react'
 import { useTickets } from '../hooks/useTickets'
 import { Btn, Empty, Spinner, SectionCard } from '../components/UI'
 import { formatCurrency, formatDate } from '../utils/helpers'
+import TicketViewModal from '../components/TicketViewModal'
 import s from './Tickets.module.css'
 
 const CATEGORIES = ['Suministros','Software/SaaS','Material oficina','Transporte','Formación','Publicidad','Otros']
+
+// ✅ Helper: always convert to a safe number (MySQL returns decimals as strings)
+const n = (v) => {
+  const x = Number(v)
+  return Number.isFinite(x) ? x : 0
+}
 
 export default function Tickets() {
   const { tickets, loading, uploading, uploadTicket, addTicketNoFile, deleteTicket, ivaDeductible, totalGastos } = useTickets()
   const [form, setForm] = useState({ description:'', amount:'', iva_rate:21, iva_amount:'', date: new Date().toISOString().split('T')[0], category:'Otros' })
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null)
-  const [saved, setSaved] = useState(false)
+  const [viewing, setViewing] = useState(null)
   const fileRef = useRef()
   const set = (k,v) => setForm(p => ({...p,[k]:v}))
 
@@ -29,7 +36,6 @@ export default function Tickets() {
     }
   }
 
-  // Auto-calc IVA amount when amount changes
   function handleAmount(val) {
     set('amount', val)
     const iva = (parseFloat(val)||0) * (parseFloat(form.iva_rate)||21) / (100 + parseFloat(form.iva_rate||21))
@@ -43,26 +49,15 @@ export default function Tickets() {
       amount:      parseFloat(form.amount) || 0,
       iva_amount:  parseFloat(form.iva_amount) || 0,
       iva_rate:    parseFloat(form.iva_rate) || 21,
-      date:        form.date || null,
+      date:        form.date,
       category:    form.category,
     }
-    try {
-      let result
-      if (file) result = await uploadTicket(file, fields)
-      else      result = await addTicketNoFile(fields)
-      if (result?.error) {
-        alert('Error al guardar ticket:\n' + (result.error.message || JSON.stringify(result.error)))
-        return
-      }
-      setForm({ description:'', amount:'', iva_rate:21, iva_amount:'', date: new Date().toISOString().split('T')[0], category:'Otros' })
-      setFile(null)
-      setPreview(null)
-      if (fileRef.current) fileRef.current.value = ''
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
-    } catch (err) {
-      alert('Error inesperado: ' + err.message)
-    }
+    if (file) await uploadTicket(file, fields)
+    else      await addTicketNoFile(fields)
+    setForm({ description:'', amount:'', iva_rate:21, iva_amount:'', date: new Date().toISOString().split('T')[0], category:'Otros' })
+    setFile(null)
+    setPreview(null)
+    if (fileRef.current) fileRef.current.value = ''
   }
 
   if (loading) return <div className={s.page}><Spinner /></div>
@@ -97,7 +92,6 @@ export default function Tickets() {
         {/* Upload form */}
         <SectionCard title="Añadir ticket / gasto">
           <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:12 }}>
-            {/* File upload area */}
             <div
               className={`${s.dropZone} ${file ? s.dropZoneActive : ''}`}
               onClick={() => fileRef.current?.click()}
@@ -159,13 +153,8 @@ export default function Tickets() {
             </div>
 
             <Btn type="submit" disabled={uploading} full icon={<Upload size={14}/>}>
-              {uploading ? 'Subiendo…' : saved ? '✓ Ticket guardado' : 'Guardar ticket'}
+              {uploading ? 'Subiendo…' : 'Guardar ticket'}
             </Btn>
-            {saved && (
-              <div style={{ textAlign:'center', color:'var(--brand)', fontSize:13, fontWeight:600 }}>
-                ✓ Ticket añadido correctamente
-              </div>
-            )}
           </form>
         </SectionCard>
 
@@ -174,10 +163,10 @@ export default function Tickets() {
           {tickets.length === 0
             ? <Empty message="Sin tickets registrados aún." />
             : tickets.map(t => (
-              <div key={t.id} className={s.ticketRow}>
+              <div key={t.id} className={s.ticketRow} onClick={() => setViewing(t)}>
                 <div className={s.ticketIcon}>
                   {t.file_url
-                    ? t.file_name?.endsWith('.pdf') ? <Receipt size={18}/> : <FileImage size={18}/>
+                    ? /\.pdf$/i.test(t.file_name || '') ? <File size={18}/> : <FileImage size={18}/>
                     : <Receipt size={18}/>
                   }
                 </div>
@@ -188,10 +177,10 @@ export default function Tickets() {
                   </div>
                 </div>
                 <div className={s.ticketAmounts}>
-                  <div className={s.ticketTotal}>{formatCurrency(t.amount)}</div>
-                  <div className={s.ticketIva}>IVA: {formatCurrency(t.iva_amount)}</div>
+                  <div className={s.ticketTotal}>{formatCurrency(n(t.amount))}</div>
+                  <div className={s.ticketIva}>IVA: {formatCurrency(n(t.iva_amount))}</div>
                 </div>
-                <div style={{ display:'flex', gap:4 }}>
+                <div style={{ display:'flex', gap:4 }} onClick={e => e.stopPropagation()}>
                   {t.file_url && (
                     <a href={t.file_url} target="_blank" rel="noopener noreferrer" className={s.iconBtn}>
                       <ExternalLink size={14}/>
@@ -207,6 +196,14 @@ export default function Tickets() {
           }
         </div>
       </div>
+
+      {viewing && (
+        <TicketViewModal
+          ticket={viewing}
+          onClose={() => setViewing(null)}
+          onDelete={() => { deleteTicket(viewing.id, viewing.file_path); setViewing(null) }}
+        />
+      )}
     </div>
   )
 }

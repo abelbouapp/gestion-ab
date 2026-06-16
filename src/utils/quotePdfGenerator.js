@@ -19,11 +19,16 @@ export function generateQuotePDF(quote, client, myInfo = {}) {
   doc.setTextColor(109, 207, 148)
   doc.text('PRESUPUESTO', 14, 13)
 
-  // ── Logo / brand
-  doc.setFont('helvetica', 'bolditalic')
-  doc.setFontSize(20)
-  doc.setTextColor(26, 46, 34)
-  doc.text('Abel Bou', 14, 24)
+  // ── Logo o nombre de marca
+  if (myInfo.logo) {
+    const fmt = myInfo.logo.startsWith('data:image/png') ? 'PNG' : 'JPEG'
+    doc.addImage(myInfo.logo, fmt, 14, 8, 0, 30)
+  } else {
+    doc.setFont('helvetica', 'bolditalic')
+    doc.setFontSize(20)
+    doc.setTextColor(26, 46, 34)
+    doc.text(myInfo.company || myInfo.name || 'Abel Bou', 14, 24)
+  }
 
   // ── Number & dates
   doc.setFont('helvetica', 'bold')
@@ -85,6 +90,9 @@ export function generateQuotePDF(quote, client, myInfo = {}) {
   doc.setFontSize(9)
   doc.setTextColor(100, 120, 110)
   let iy = y + 6, cy = y + 6
+  if (myInfo.name && myInfo.company && myInfo.name !== myInfo.company) {
+    doc.text(myInfo.name, 14, iy); iy += 5
+  }
   if (myInfo.nif)     { doc.text(`NIF: ${myInfo.nif}`, 14, iy);     iy += 5 }
   if (myInfo.email)   { doc.text(myInfo.email, 14, iy);             iy += 5 }
   if (myInfo.phone)   { doc.text(myInfo.phone, 14, iy);             iy += 5 }
@@ -94,30 +102,53 @@ export function generateQuotePDF(quote, client, myInfo = {}) {
 
   // ── Lines table
   const tableY = Math.max(iy, cy) + 8
-  autoTable(doc, {
-    startY: tableY,
-    head: [['Descripción', 'Cant.', 'Ud.', 'Precio unit.', 'Total']],
-    body: (quote.lines || []).map(l => [
-      l.desc,
-      Number(l.qty).toFixed(2),
-      l.unit || 'ud',
-      formatCurrency(l.price),
-      formatCurrency(Number(l.qty) * Number(l.price)),
-    ]),
-    styles: { font: 'helvetica', fontSize: 9, cellPadding: 5, textColor: [26, 46, 34] },
-    headStyles: { fillColor: [26, 46, 34], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
-    alternateRowStyles: { fillColor: [240, 248, 243] },
-    columnStyles: {
-      0: { cellWidth: 80 },
-      1: { halign: 'right' },
-      2: { halign: 'center' },
-      3: { halign: 'right' },
-      4: { halign: 'right', fontStyle: 'bold' },
-    },
-  })
+  const lines = quote.lines || []
+  const isPackage = lines.length > 1 && lines.filter(l => Number(l.price) > 0).length === 1
+
+  if (isPackage) {
+    autoTable(doc, {
+      startY: tableY,
+      head: [['Conceptos incluidos']],
+      body: lines.map(l => [l.desc]),
+      styles: { font: 'helvetica', fontSize: 9, cellPadding: 5, textColor: [26, 46, 34] },
+      headStyles: { fillColor: [26, 46, 34], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+      alternateRowStyles: { fillColor: [240, 248, 243] },
+      columnStyles: { 0: { cellWidth: 166 } },
+    })
+    const pkgY = doc.lastAutoTable.finalY + 8
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.setTextColor(109, 207, 148)
+    doc.text(`Precio del paquete: ${formatCurrency(quote.subtotal)}`, 196, pkgY, { align: 'right' })
+    doc.setTextColor(100, 120, 110)
+    doc.setFont('helvetica', 'normal')
+    var fy = pkgY + 10
+  } else {
+    autoTable(doc, {
+      startY: tableY,
+      head: [['Descripción', 'Cant.', 'Ud.', 'Precio unit.', 'Total']],
+      body: lines.map(l => [
+        l.desc,
+        Number(l.qty).toFixed(2),
+        l.unit || 'ud',
+        formatCurrency(l.price),
+        formatCurrency(Number(l.qty) * Number(l.price)),
+      ]),
+      styles: { font: 'helvetica', fontSize: 9, cellPadding: 5, textColor: [26, 46, 34] },
+      headStyles: { fillColor: [26, 46, 34], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+      alternateRowStyles: { fillColor: [240, 248, 243] },
+      columnStyles: {
+        0: { cellWidth: 80 },
+        1: { halign: 'right' },
+        2: { halign: 'center' },
+        3: { halign: 'right' },
+        4: { halign: 'right', fontStyle: 'bold' },
+      },
+    })
+    var fy = doc.lastAutoTable.finalY + 6
+  }
 
   // ── Totals
-  const fy = doc.lastAutoTable.finalY + 6
   const rx = 196
   doc.setFontSize(9)
   doc.setTextColor(100, 120, 110)

@@ -8,8 +8,14 @@ import { formatCurrency } from '../utils/helpers'
 import { Avatar, SectionCard, StatusBadge, Spinner, Btn } from '../components/UI'
 import s from './Dashboard.module.css'
 
+// ✅ Helper: always convert to a safe number (MySQL returns decimals as strings)
+const n = (v) => {
+  const x = Number(v)
+  return Number.isFinite(x) ? x : 0
+}
+
 function getCurrentQuarter() {
-  const m = new Date().getMonth() // 0-11
+  const m = new Date().getMonth()
   return Math.floor(m / 3) + 1
 }
 function getQuarterRange(q, year) {
@@ -28,9 +34,8 @@ export default function Dashboard() {
 
   const now   = new Date()
   const year  = now.getFullYear()
-  const [period, setPeriod] = useState('quarter') // 'month' | 'quarter' | 'all'
+  const [period, setPeriod] = useState('quarter')
 
-  // ── Filter range ──────────────────────────────────────────
   const range = useMemo(() => {
     if (period === 'all') return null
     if (period === 'month') {
@@ -39,7 +44,6 @@ export default function Dashboard() {
         end:   new Date(year, now.getMonth() + 1, 0, 23, 59, 59),
       }
     }
-    // quarter
     return getQuarterRange(getCurrentQuarter(), year)
   }, [period])
 
@@ -49,10 +53,10 @@ export default function Dashboard() {
       ? `${now.toLocaleString('es-ES', { month: 'long' })} ${year}`
       : `${getCurrentQuarter()}T ${year}`
 
-  // ── Filtered invoices/tickets FOR FISCAL STATS only ──────
   const filteredInvoices = useMemo(() => {
     if (!range) return invoices
     return invoices.filter(i => {
+      if (!i.date) return false
       const d = new Date(i.date)
       return d >= range.start && d <= range.end
     })
@@ -61,29 +65,27 @@ export default function Dashboard() {
   const filteredTickets = useMemo(() => {
     if (!range) return tickets
     return tickets.filter(t => {
+      if (!t.date) return false
       const d = new Date(t.date)
       return d >= range.start && d <= range.end
     })
   }, [tickets, range])
 
-  // ── Fiscal calcs (period-filtered) ───────────────────────
-  const ivaCollected   = filteredInvoices.reduce((s, i) => s + (i.iva_amount || 0), 0)
-  const irpfRetained   = filteredInvoices.reduce((s, i) => s + (i.irpf_amount || 0), 0)
-  const totalBilled    = filteredInvoices.reduce((s, i) => s + (i.total || 0), 0)
-  const ivaDeductible  = filteredTickets.reduce((s, t) => s + (t.iva_amount || 0), 0)
-  const totalGastos    = filteredTickets.reduce((s, t) => s + (t.amount || 0), 0)
+  // ✅ All sums wrapped with n()
+  const ivaCollected   = filteredInvoices.reduce((s, i) => s + n(i.iva_amount), 0)
+  const irpfRetained   = filteredInvoices.reduce((s, i) => s + n(i.irpf_amount), 0)
+  const totalBilled    = filteredInvoices.reduce((s, i) => s + n(i.total), 0)
+  const ivaDeductible  = filteredTickets.reduce((s, t) => s + n(t.iva_amount), 0)
+  const totalGastos    = filteredTickets.reduce((s, t) => s + n(t.amount), 0)
   const ivaAPagar      = Math.max(0, ivaCollected - ivaDeductible)
   const liquido        = totalBilled - ivaAPagar - irpfRetained
 
-  // ── Recent invoices (ALL, not filtered) ──────────────────
   const recentInvoices = [...invoices]
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .slice(0, 5)
 
-  // ── Active projects (ALL, not filtered) ──────────────────
   const activeProjects = projects.filter(p => p.status !== 'done').slice(0, 5)
 
-  // ── Export for gestor ─────────────────────────────────────
   function exportForGestor() {
     const report = {
       periodo: periodLabel,
@@ -99,12 +101,12 @@ export default function Dashboard() {
       },
       facturas: filteredInvoices.map(i => ({
         numero: i.number, serie: i.series, fecha: i.date,
-        cliente_id: i.client_id, total: i.total,
-        iva: i.iva_amount, irpf: i.irpf_amount, estado: i.status,
+        cliente_id: i.client_id, total: n(i.total),
+        iva: n(i.iva_amount), irpf: n(i.irpf_amount), estado: i.status,
       })),
       tickets: filteredTickets.map(t => ({
         descripcion: t.description, fecha: t.date,
-        importe: t.amount, iva: t.iva_amount, categoria: t.category,
+        importe: n(t.amount), iva: n(t.iva_amount), categoria: t.category,
       })),
     }
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })
@@ -118,7 +120,6 @@ export default function Dashboard() {
 
   return (
     <div className={s.page}>
-      {/* Header */}
       <div className={s.topRow}>
         <div className={s.greeting}>
           <h1>Hola, {user?.name?.split(' ')[0]} 👋</h1>
@@ -144,7 +145,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Fiscal cards — period filtered */}
       <div className={s.fiscalGrid}>
         {[
           { label: 'Facturado',       value: formatCurrency(totalBilled),   color: '#22c55e', sub: `${filteredInvoices.length} facturas` },
@@ -163,7 +163,6 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Two columns — ALL data, no period filter */}
       <div className={s.cols}>
         <SectionCard
           title="Últimas facturas"
@@ -176,11 +175,11 @@ export default function Dashboard() {
               return (
                 <div key={inv.id} className={s.invRow} onClick={() => navigate('/facturas')}>
                   <div>
-                    <div className={s.invNum}>{inv.number}</div>
+                    <div className={s.invNum}>{inv.number || 'Borrador'}</div>
                     <div className={s.invClient}>{client?.name || '—'}</div>
                   </div>
                   <div className={s.invRight}>
-                    <div className={s.invAmount}>{formatCurrency(inv.total)}</div>
+                    <div className={s.invAmount}>{formatCurrency(n(inv.total))}</div>
                     <StatusBadge status={inv.status} />
                   </div>
                 </div>
@@ -212,7 +211,6 @@ export default function Dashboard() {
         </SectionCard>
       </div>
 
-      {/* Quick stats — ALL data */}
       <div className={s.quickStats}>
         {[
           { label: 'Clientes',          value: clients.length,                onClick: () => navigate('/clientes') },
