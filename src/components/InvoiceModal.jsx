@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import { Modal, Field, Row, Btn } from './UI'
 import { calcInvoice, formatCurrency } from '../utils/helpers'
 import LinesEditor from './LinesEditor'
+import { parseOcClient, getRealNotes } from '../utils/pdfGenerator'
 
 export default function InvoiceModal({ initial = {}, clients, onSave, onClose, convertingFrom }) {
-  const [clientMode, setClientMode] = useState('saved') // 'saved' | 'occasional'
-  const [oc, setOc] = useState({ name: '', nif: '', address: '', email: '', phone: '' }) // occasional client
+  const initialOc = parseOcClient(initial.notes)
+  const [clientMode, setClientMode] = useState(initialOc ? 'occasional' : 'saved') // 'saved' | 'occasional'
+  const [oc, setOc] = useState(initialOc || { name: '', nif: '', address: '', email: '', phone: '' }) // occasional client
   const [f, setF] = useState({
     client_id:    initial.clientId || initial.client_id || '',
     series:       initial.series || 'D',
@@ -14,7 +16,7 @@ export default function InvoiceModal({ initial = {}, clients, onSave, onClose, c
     iva_rate:     initial.iva_rate || 21,
     irpf_rate:    initial.irpf_rate || 7,
     applies_irpf: initial.applies_irpf || false,
-    notes:        initial.notes || '',
+    notes:        getRealNotes(initial.notes || ''),
     status:       convertingFrom ? 'sent' : 'draft',
   })
   const [lines, setLines] = useState(

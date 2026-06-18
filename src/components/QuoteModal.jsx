@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { Modal, Field, Row, Btn } from './UI'
 import { calcInvoice, formatCurrency } from '../utils/helpers'
 import LinesEditor from './LinesEditor'
+import { parseOcClient, getRealNotes } from '../utils/pdfGenerator'
 
 export default function QuoteModal({ initial = {}, clients, onSave, onClose }) {
-  const [clientMode, setClientMode] = useState('saved')
-  const [oc, setOc] = useState({ name: '', nif: '', address: '', email: '', phone: '' })
+  const initialOc = parseOcClient(initial.notes)
+  const [clientMode, setClientMode] = useState(initialOc ? 'occasional' : 'saved')
+  const [oc, setOc] = useState(initialOc || { name: '', nif: '', address: '', email: '', phone: '' })
   const [f, setF] = useState({
     client_id:    initial.clientId || '',
     date:         new Date().toISOString().split('T')[0],
@@ -13,9 +15,9 @@ export default function QuoteModal({ initial = {}, clients, onSave, onClose }) {
     iva_rate:     21,
     irpf_rate:    7,
     applies_irpf: false,
-    notes:        '',
     status:       'draft',
     ...initial,
+    notes:        getRealNotes(initial.notes || ''),
   })
   const [lines, setLines] = useState(
     initial.lines || [{ desc: '', qty: 1, unit: 'ud', price: 0 }]

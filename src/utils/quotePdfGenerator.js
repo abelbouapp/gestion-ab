@@ -1,9 +1,18 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { formatDate, formatCurrency } from './helpers'
+import { parseOcClient, getRealNotes } from './pdfGenerator'
 
 export function generateQuotePDF(quote, client, myInfo = {}) {
   const doc = new jsPDF()
+
+  // Resolve client info — either a saved client, or an "occasional" one stored in notes
+  const occasional     = !client ? parseOcClient(quote.notes) : null
+  const clientName     = client?.name    || occasional?.name    || '—'
+  const clientNif      = client?.nif     || occasional?.nif     || ''
+  const clientAddress  = client?.address || occasional?.address || ''
+  const clientEmail    = client?.email   || occasional?.email   || ''
+  const realNotes      = getRealNotes(quote.notes)
 
   // ── Header band
   doc.setFillColor(240, 248, 243)
@@ -84,7 +93,7 @@ export function generateQuotePDF(quote, client, myInfo = {}) {
   doc.setFontSize(10)
   doc.setTextColor(26, 46, 34)
   doc.text(myInfo.company || myInfo.name || 'Abel Bou', 14, y)
-  doc.text(client?.name || '—', 110, y)
+  doc.text(clientName, 110, y)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
@@ -96,9 +105,9 @@ export function generateQuotePDF(quote, client, myInfo = {}) {
   if (myInfo.nif)     { doc.text(`NIF: ${myInfo.nif}`, 14, iy);     iy += 5 }
   if (myInfo.email)   { doc.text(myInfo.email, 14, iy);             iy += 5 }
   if (myInfo.phone)   { doc.text(myInfo.phone, 14, iy);             iy += 5 }
-  if (client?.nif)    { doc.text(`NIF: ${client.nif}`, 110, cy);    cy += 5 }
-  if (client?.email)  { doc.text(client.email, 110, cy);            cy += 5 }
-  if (client?.address){ doc.text(client.address, 110, cy);          cy += 5 }
+  if (clientNif)     { doc.text(`NIF: ${clientNif}`, 110, cy);     cy += 5 }
+  if (clientEmail)   { doc.text(clientEmail, 110, cy);             cy += 5 }
+  if (clientAddress) { doc.text(clientAddress, 110, cy);           cy += 5 }
 
   // ── Lines table
   const tableY = Math.max(iy, cy) + 8
@@ -167,14 +176,14 @@ export function generateQuotePDF(quote, client, myInfo = {}) {
   doc.text(formatCurrency(quote.total), rx - 3, fy + 19.5, { align: 'right' })
 
   // ── Notes
-  if (quote.notes) {
+  if (realNotes) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8.5)
     doc.setTextColor(100, 120, 110)
     const notesY = fy + 28
     doc.text('Notas / Condiciones:', 14, notesY)
     doc.setTextColor(60, 80, 70)
-    doc.text(doc.splitTextToSize(quote.notes, 182), 14, notesY + 6)
+    doc.text(doc.splitTextToSize(realNotes, 182), 14, notesY + 6)
   }
 
   // ── Footer
@@ -184,5 +193,5 @@ export function generateQuotePDF(quote, client, myInfo = {}) {
   doc.setTextColor(160, 180, 170)
   doc.text('Abel Bou — Este presupuesto no tiene valor fiscal hasta su conversión en factura.', 105, 288, { align: 'center' })
 
-  doc.save(`${quote.number}_${client?.name || 'presupuesto'}.pdf`)
+  doc.save(`${quote.number}_${clientName !== '—' ? clientName : 'presupuesto'}.pdf`)
 }
