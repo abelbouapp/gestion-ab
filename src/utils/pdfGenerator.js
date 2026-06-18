@@ -25,8 +25,22 @@ export function getRealNotes(notes) {
   return lines.slice(1).join('\n').trim()
 }
 
+async function loadLogoBase64() {
+  try {
+    const res = await fetch(import.meta.env.BASE_URL + 'logo.png')
+    if (!res.ok) return null
+    const blob = await res.blob()
+    return new Promise(resolve => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result)
+      reader.onerror  = () => resolve(null)
+      reader.readAsDataURL(blob)
+    })
+  } catch { return null }
+}
+
 // ── PDF generator ────────────────────────────────────────────
-export function generateInvoicePDF(invoice, client, myInfo = {}) {
+export async function generateInvoicePDF(invoice, client, myInfo = {}) {
   const doc = new jsPDF()
   const isD = invoice.series === 'D'
   const accentR = isD ? 79  : 249
@@ -52,23 +66,26 @@ export function generateInvoicePDF(invoice, client, myInfo = {}) {
   doc.rect(0, 0, 5, 297, 'F')
 
   // ── Logo o nombre de marca
-  if (myInfo.logo) {
-    const fmt = myInfo.logo.startsWith('data:image/png') ? 'PNG' : 'JPEG'
-    doc.addImage(myInfo.logo, fmt, 14, 8, 0, 30)
+  const logoSrc = myInfo.logo || await loadLogoBase64()
+  if (logoSrc) {
+    const fmt = logoSrc.startsWith('data:image/png') ? 'PNG' : 'JPEG'
+    doc.addImage(logoSrc, fmt, 14, 8, 0, 28)
   } else {
     doc.setFont('helvetica', 'bolditalic')
     doc.setFontSize(22)
     doc.setTextColor(26, 46, 34)
-    doc.text(myInfo.company || myInfo.name || 'Abel Bou', 14, 22)
+    doc.text(myInfo.company || myInfo.name || 'Abel Bou', 14, 24)
   }
 
-  // Series badge
-  doc.setFillColor(accentR, accentG, accentB)
-  doc.roundedRect(14, 26, isD ? 36 : 40, 9, 2, 2, 'F')
-  doc.setFontSize(8)
+  // Series badge — solo borde, sin relleno
+  const pillW = isD ? 36 : 24
+  doc.setDrawColor(accentR, accentG, accentB)
+  doc.setLineWidth(0.7)
+  doc.roundedRect(14, 38, pillW, 7, 2, 2, 'S')
+  doc.setFontSize(6)
   doc.setFont('helvetica', 'bold')
-  doc.setTextColor(255, 255, 255)
-  doc.text(isD ? 'SERVICIOS DIGITALES' : 'PRODUCTOS', 16, 32)
+  doc.setTextColor(accentR, accentG, accentB)
+  doc.text(isD ? 'SERVICIOS DIGITALES' : 'PRODUCTOS', 14 + pillW / 2, 42.7, { align: 'center' })
 
   // Invoice number & dates (right side) — or "BORRADOR" if not yet numbered
   doc.setFont('helvetica', 'bold')
@@ -84,20 +101,15 @@ export function generateInvoicePDF(invoice, client, myInfo = {}) {
     doc.text(`Vencimiento: ${formatDate(invoice.due_date)}`, 196, 37, { align: 'right' })
   }
 
-  // Status badge
-  const statusMap = { draft: 'BORRADOR', sent: 'ENVIADA', paid: 'PAGADA' }
-  const statusColors = {
-    draft: [200, 200, 200],
-    sent:  [accentR, accentG, accentB],
-    paid:  [34, 197, 94]
+  // Status badge — solo se muestra para borradores (enviada/pagada no necesitan distintivo)
+  if (invoice.status === 'draft' || !invoice.status) {
+    doc.setFillColor(200, 200, 200)
+    doc.roundedRect(163, 40, 33, 8, 2, 2, 'F')
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(255, 255, 255)
+    doc.text('BORRADOR', 179.5, 45.5, { align: 'center' })
   }
-  const sc = statusColors[invoice.status] || statusColors.draft
-  doc.setFillColor(...sc)
-  doc.roundedRect(155, 40, 41, 9, 2, 2, 'F')
-  doc.setFontSize(8)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(255, 255, 255)
-  doc.text(statusMap[invoice.status] || 'BORRADOR', 175.5, 46, { align: 'center' })
 
   // ── Draft notice banner
   if (isDraft) {
@@ -220,17 +232,27 @@ export function generateInvoicePDF(invoice, client, myInfo = {}) {
   doc.text('TOTAL:', rx - 50, totalY + 8.5, { align: 'right' })
   doc.text(formatCurrency(invoice.total), rx - 3, totalY + 8.5, { align: 'right' })
 
-  // IBAN
+  // IBAN — recuadro con borde
   if (myInfo.iban) {
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8)
-    doc.setTextColor(138, 168, 152)
-    doc.text(`Transferencia a: ${myInfo.iban}`, 14, totalY + 14)
+    const ibanY = totalY + 10
+    doc.setFillColor(247, 249, 247)
+    doc.roundedRect(14, ibanY, 120, 14, 2, 2, 'F')
+    doc.setDrawColor(accentR, accentG, accentB)
+    doc.setLineWidth(0.6)
+    doc.roundedRect(14, ibanY, 120, 14, 2, 2, 'S')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7.5)
+    doc.setTextColor(74, 99, 88)
+    doc.text('PAGO POR TRANSFERENCIA', 20, ibanY + 5.5)
+    doc.setFontSize(9)
+    doc.setTextColor(accentR, accentG, accentB)
+    doc.text(myInfo.iban, 20, ibanY + 11)
   }
 
   // Notes (occasional client header already stripped via getRealNotes)
   if (realNotes) {
-    const ny = totalY + (myInfo.iban ? 22 : 16)
+    const ny = totalY + (myInfo.iban ? 30 : 16)
+    doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
     doc.setTextColor(138, 168, 152)
     doc.text(`Notas: ${realNotes}`, 14, ny)
@@ -241,7 +263,7 @@ export function generateInvoicePDF(invoice, client, myInfo = {}) {
   doc.line(14, 283, 196, 283)
   doc.setFontSize(7)
   doc.setTextColor(160, 180, 170)
-  doc.text('Abel Bou — Gestión de clientes', 105, 288, { align: 'center' })
+  doc.text('Abel Bou · Desarrollador web · Diseñador Gráfico · Creativos', 105, 288, { align: 'center' })
 
   const fileLabel = invoice.number || 'BORRADOR'
   doc.save(`${fileLabel}_${clientName}.pdf`)

@@ -3,7 +3,21 @@ import autoTable from 'jspdf-autotable'
 import { formatDate, formatCurrency } from './helpers'
 import { parseOcClient, getRealNotes } from './pdfGenerator'
 
-export function generateQuotePDF(quote, client, myInfo = {}) {
+async function loadLogoBase64() {
+  try {
+    const res = await fetch(import.meta.env.BASE_URL + 'logo.png')
+    if (!res.ok) return null
+    const blob = await res.blob()
+    return new Promise(resolve => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result)
+      reader.onerror  = () => resolve(null)
+      reader.readAsDataURL(blob)
+    })
+  } catch { return null }
+}
+
+export async function generateQuotePDF(quote, client, myInfo = {}) {
   const doc = new jsPDF()
 
   // Resolve client info — either a saved client, or an "occasional" one stored in notes
@@ -29,9 +43,10 @@ export function generateQuotePDF(quote, client, myInfo = {}) {
   doc.text('PRESUPUESTO', 14, 13)
 
   // ── Logo o nombre de marca
-  if (myInfo.logo) {
-    const fmt = myInfo.logo.startsWith('data:image/png') ? 'PNG' : 'JPEG'
-    doc.addImage(myInfo.logo, fmt, 14, 8, 0, 30)
+  const logoSrc = myInfo.logo || await loadLogoBase64()
+  if (logoSrc) {
+    const fmt = logoSrc.startsWith('data:image/png') ? 'PNG' : 'JPEG'
+    doc.addImage(logoSrc, fmt, 14, 8, 0, 30)
   } else {
     doc.setFont('helvetica', 'bolditalic')
     doc.setFontSize(20)
