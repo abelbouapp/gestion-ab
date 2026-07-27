@@ -8,6 +8,7 @@ export default function QuoteModal({ initial = {}, clients, onSave, onClose }) {
   const initialOc = parseOcClient(initial.notes)
   const [clientMode, setClientMode] = useState(initialOc ? 'occasional' : 'saved')
   const [oc, setOc] = useState(initialOc || { name: '', nif: '', address: '', email: '', phone: '' })
+  const [ivaExento, setIvaExento] = useState((initial.iva_rate ?? 21) === 0)
   const [f, setF] = useState({
     client_id:    initial.clientId || '',
     date:         new Date().toISOString().split('T')[0],
@@ -136,7 +137,18 @@ export default function QuoteModal({ initial = {}, clients, onSave, onClose }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>IVA (%)</label>
             <input type="number" min="0" max="100" value={f.iva_rate}
-              onChange={e => set('iva_rate', e.target.value)} style={{ width: 70, textAlign: 'center' }} />
+              onChange={e => set('iva_rate', e.target.value)}
+              disabled={ivaExento}
+              style={{ width: 70, textAlign: 'center', opacity: ivaExento ? 0.4 : 1 }} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input type="checkbox" id="iva_exento_chk" checked={ivaExento}
+              onChange={e => { setIvaExento(e.target.checked); set('iva_rate', e.target.checked ? 0 : 21) }}
+              style={{ width: 'auto', accentColor: 'var(--brand)' }} />
+            <label htmlFor="iva_exento_chk" style={{ fontSize: 13, cursor: 'pointer' }}>
+              Exento de IVA
+              <span style={{ color: 'var(--muted)', fontSize: 11, marginLeft: 5 }}>(exportación / cliente fuera de la UE)</span>
+            </label>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>IRPF (%)</label>
