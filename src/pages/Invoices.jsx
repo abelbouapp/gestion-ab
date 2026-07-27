@@ -19,7 +19,7 @@ const n = (v) => {
 export default function Invoices() {
   const [params] = useSearchParams()
   const { clients } = useClients()
-  const { invoices, loading, addInvoice, updateInvoice, deleteInvoice } = useInvoices()
+  const { invoices, loading, addInvoice, updateInvoice, deleteInvoice, finalizeInvoice } = useInvoices()
   const [modal,    setModal]   = useState(params.get('client') ? { clientId: params.get('client') } : null)
   const [viewing,  setViewing] = useState(null)
   const [series,   setSeries]  = useState('all') // all | D | P
@@ -125,7 +125,13 @@ export default function Invoices() {
                   <StatusBadge status={inv.status} />
                   <select className={s.statusSel} value={inv.status}
                     onClick={e => e.stopPropagation()}
-                    onChange={e => updateInvoice(inv.id, { status: e.target.value })}>
+                    onChange={async e => {
+                      const newSt = e.target.value
+                      if (inv.status === 'draft' && newSt !== 'draft' && !inv.number_seq) {
+                        await finalizeInvoice(inv.id, inv.series)
+                      }
+                      updateInvoice(inv.id, { status: newSt })
+                    }}>
                     <option value="draft">Borrador</option>
                     <option value="sent">Enviada</option>
                     <option value="paid">Pagada</option>
@@ -153,7 +159,13 @@ export default function Invoices() {
         <InvoiceViewModal
           invoice={viewing} clients={clients} myInfo={myInfo}
           onClose={() => setViewing(null)}
-          onStatusChange={st => { updateInvoice(viewing.id,{status:st}).then(r => setViewing(r.data)) }}
+          onStatusChange={async st => {
+            if (viewing.status === 'draft' && st !== 'draft' && !viewing.number_seq) {
+              const r = await finalizeInvoice(viewing.id, viewing.series)
+              setViewing(v => ({ ...v, ...r.data }))
+            }
+            updateInvoice(viewing.id, { status: st }).then(r => setViewing(v => ({ ...v, ...r.data })))
+          }}
           onDelete={async () => { await deleteInvoice(viewing.id); setViewing(null) }}
         />
       )}

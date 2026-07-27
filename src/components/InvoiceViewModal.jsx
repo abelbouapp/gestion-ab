@@ -1,5 +1,5 @@
 import { Modal, Btn, StatusBadge, SeriesBadge } from './UI'
-import { formatCurrency, formatDate } from '../utils/helpers'
+import { formatCurrency, formatDate, getIdLabel } from '../utils/helpers'
 import { generateInvoicePDF, parseOcClient, getRealNotes } from '../utils/pdfGenerator'
 import { Download, Trash2 } from 'lucide-react'
 import s from './InvoiceViewModal.module.css'
@@ -43,7 +43,7 @@ export default function InvoiceViewModal({ invoice: inv, clients, myInfo = {}, o
         <div className={s.parties}>
           {[
             { label:'Emisor',  name: myInfo.company||myInfo.name||'—', legalName: (myInfo.name && myInfo.company && myInfo.name !== myInfo.company) ? myInfo.name : null, nif: myInfo.nif, addr: myInfo.address, email: myInfo.email, phone: myInfo.phone },
-            { label:'Cliente', name: clientObj.name||'—',              nif: clientObj.nif,   addr: clientObj.address,   email: clientObj.email,   phone: clientObj.phone,
+            { label:'Cliente', name: clientObj.name||'—', idLabel: getIdLabel(clientObj.country||'ES'), nif: clientObj.nif, addr: clientObj.address, email: clientObj.email, phone: clientObj.phone,
               occasional: !!ocClient },
           ].map(p => (
             <div key={p.label} className={s.party}>
@@ -53,7 +53,7 @@ export default function InvoiceViewModal({ invoice: inv, clients, myInfo = {}, o
               </div>
               <div className={s.partyName}>{p.name}</div>
               {p.legalName && <div className={s.partyInfo}>{p.legalName}</div>}
-              {p.nif   && <div className={s.partyInfo}>NIF: {p.nif}</div>}
+              {p.nif   && <div className={s.partyInfo}>{p.idLabel || 'NIF'}: {p.nif}</div>}
               {p.addr  && <div className={s.partyInfo}>{p.addr}</div>}
               {p.email && <div className={s.partyInfo}>{p.email}</div>}
               {p.phone && <div className={s.partyInfo}>{p.phone}</div>}

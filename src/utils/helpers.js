@@ -51,6 +51,43 @@ export function getColor(index) {
   return BRAND_COLORS[index % BRAND_COLORS.length]
 }
 
+// International client helpers
+const EU = new Set(['ES','DE','FR','IT','PT','NL','BE','AT','SE','FI','DK','IE','LU','GR','PL','CZ','SK','HU','RO','BG','HR','SI','LT','LV','EE','CY','MT'])
+
+export const COUNTRIES = [
+  { code:'ES', name:'España' },
+  { code:'AR', name:'Argentina' },
+  { code:'MX', name:'México' },
+  { code:'CO', name:'Colombia' },
+  { code:'CL', name:'Chile' },
+  { code:'PE', name:'Perú' },
+  { code:'UY', name:'Uruguay' },
+  { code:'VE', name:'Venezuela' },
+  { code:'BR', name:'Brasil' },
+  { code:'US', name:'Estados Unidos' },
+  { code:'GB', name:'Reino Unido' },
+  { code:'DE', name:'Alemania' },
+  { code:'FR', name:'Francia' },
+  { code:'IT', name:'Italia' },
+  { code:'PT', name:'Portugal' },
+  { code:'NL', name:'Países Bajos' },
+  { code:'OTHER', name:'Otro país' },
+]
+
+const ID_LABELS = {
+  ES:'NIF/CIF', AR:'CUIL/DNI', MX:'RFC', US:'EIN/SSN',
+  UY:'RUT/CI', CO:'NIT/CC', CL:'RUT', PE:'RUC',
+  BR:'CPF/CNPJ', VE:'RIF', GB:'UTR',
+}
+
+export function getIdLabel(country) {
+  return ID_LABELS[country] || 'ID Fiscal'
+}
+
+export function isEuCountry(country) {
+  return EU.has(country || 'ES')
+}
+
 // Invoice number helpers
 export function buildInvoiceNumber(series, seq) {
   return `${String(seq).padStart(3, '0')}${series}`

@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { formatDate, formatCurrency } from './helpers'
+import { formatDate, formatCurrency, getIdLabel } from './helpers'
 
 // ── Occasional client helpers ──────────────────────────────
 // "Cliente ocasional" data is stored inside the `notes` field as:
@@ -55,6 +55,8 @@ export async function generateInvoicePDF(invoice, client, myInfo = {}) {
   const clientNif     = client?.nif     || occasional?.nif     || ''
   const clientAddress = client?.address || occasional?.address || ''
   const clientEmail   = client?.email   || occasional?.email   || ''
+  const clientCountry = client?.country || occasional?.country || 'ES'
+  const idLabel       = getIdLabel(clientCountry)
   const realNotes     = getRealNotes(invoice.notes)
 
   // ── Background header band
@@ -150,7 +152,7 @@ export async function generateInvoicePDF(invoice, client, myInfo = {}) {
   if (myInfo.address) { doc.text(myInfo.address, 14, iy); iy += 5 }
   if (myInfo.email)   { doc.text(myInfo.email, 14, iy); iy += 5 }
   if (myInfo.phone)   { doc.text(myInfo.phone, 14, iy); iy += 5 }
-  if (clientNif)     { doc.text(`NIF: ${clientNif}`, 110, cy); cy += 5 }
+  if (clientNif)     { doc.text(`${idLabel}: ${clientNif}`, 110, cy); cy += 5 }
   if (clientAddress) { doc.text(clientAddress, 110, cy); cy += 5 }
   if (clientEmail)   { doc.text(clientEmail, 110, cy); cy += 5 }
 
@@ -210,8 +212,14 @@ export async function generateInvoicePDF(invoice, client, myInfo = {}) {
   doc.text('Base imponible:', rx - 50, fy, { align: 'right' })
   doc.text(formatCurrency(invoice.subtotal), rx, fy, { align: 'right' })
 
-  doc.text(`IVA (${invoice.iva_rate || 21}%):`, rx - 50, fy + 7, { align: 'right' })
-  doc.text(formatCurrency(invoice.iva_amount), rx, fy + 7, { align: 'right' })
+  const ivaRate = Number(invoice.iva_rate ?? 21)
+  if (ivaRate === 0) {
+    doc.text('IVA: Exento / No sujeto', rx - 50, fy + 7, { align: 'right' })
+    doc.text('—', rx, fy + 7, { align: 'right' })
+  } else {
+    doc.text(`IVA (${ivaRate}%):`, rx - 50, fy + 7, { align: 'right' })
+    doc.text(formatCurrency(invoice.iva_amount), rx, fy + 7, { align: 'right' })
+  }
 
   let totalY = fy + 7
   if (invoice.applies_irpf && invoice.irpf_amount > 0) {

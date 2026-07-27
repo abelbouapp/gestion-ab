@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Modal, Field, Row, Btn } from './UI'
-import { calcInvoice, formatCurrency } from '../utils/helpers'
+import { calcInvoice, formatCurrency, isEuCountry } from '../utils/helpers'
 import LinesEditor from './LinesEditor'
 import { parseOcClient, getRealNotes } from '../utils/pdfGenerator'
 
@@ -30,10 +30,19 @@ export default function InvoiceModal({ initial = {}, clients, onSave, onClose, c
   const setOcField = (k, v) => setOc(p => ({ ...p, [k]: v }))
 
   useEffect(() => {
-    if (f.series !== 'D') { set('applies_irpf', false); return }
     const client = clients.find(c => c.id === f.client_id)
-    if (client?.is_company) set('applies_irpf', true)
-    else set('applies_irpf', false)
+    const intl = client && !isEuCountry(client.country)
+    if (intl) {
+      // Cliente fuera de la UE: IVA 0% exento + sin IRPF
+      setIvaExento(true)
+      set('iva_rate', 0)
+      set('applies_irpf', false)
+    } else {
+      if (ivaExento && client) { setIvaExento(false); set('iva_rate', 21) }
+      if (f.series !== 'D') { set('applies_irpf', false); return }
+      if (client?.is_company) set('applies_irpf', true)
+      else set('applies_irpf', false)
+    }
   }, [f.client_id, f.series])
 
   function setLine(i, k, v) {
