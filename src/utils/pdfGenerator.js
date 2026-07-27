@@ -47,7 +47,7 @@ export async function generateInvoicePDF(invoice, client, myInfo = {}) {
   const accentG = isD ? 127 : 115
   const accentB = isD ? 255 : 22
 
-  const isDraft = !invoice.number
+  const isDraft = invoice.status === 'draft' || !invoice.number || invoice.number === 'BORRADOR'
 
   // Resolve client info — either a saved client, or an "occasional" one stored in notes
   const occasional = !client ? parseOcClient(invoice.notes) : null
